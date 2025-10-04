@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_shared_sublinks",
+  "info": {
+    "displayName": "sublinks"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    }
+  },
+  "config": {}
+}

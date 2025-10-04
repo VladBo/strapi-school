@@ -1,0 +1,54 @@
+{
+  "collectionName": "components_shared_links",
+  "info": {
+    "displayName": "Links",
+    "icon": "link"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "wrapper",
+        "internal",
+        "external"
+      ]
+    },
+    "url": {
+      "type": "string",
+      "conditions": {
+        "visible": {
+          "!=": [
+            {
+              "var": "type"
+            },
+            "wrapper"
+          ]
+        }
+      },
+      "required": false
+    },
+    "description": {
+      "type": "text",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "type"
+            },
+            "wrapper"
+          ]
+        }
+      }
+    },
+    "sublinks": {
+      "type": "component",
+      "component": "shared.sublinks",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

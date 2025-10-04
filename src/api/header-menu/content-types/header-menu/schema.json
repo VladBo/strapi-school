@@ -1,0 +1,23 @@
+{
+  "kind": "singleType",
+  "collectionName": "header_menus",
+  "info": {
+    "singularName": "header-menu",
+    "pluralName": "header-menus",
+    "displayName": "Header Menu"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "uuid": {
+      "type": "uid"
+    },
+    "links": {
+      "type": "component",
+      "component": "shared.links",
+      "repeatable": true
+    }
+  }
+}

@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "@strapi/plugin-cloud": "5.25.0",
+    "@strapi/plugin-documentation": "^5.25.0",
+    "@strapi/plugin-graphql": "^5.25.0",
     "@strapi/plugin-users-permissions": "5.25.0",
     "@strapi/strapi": "5.25.0",
     "fs-extra": "^10.0.0",
@@ -25,6 +27,8 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
+    "strapi-plugin-navigation": "^3.2.4",
+    "strapi-plugin-slugify": "^2.3.8",
     "styled-components": "^6.0.0"
   },
   "devDependencies": {
