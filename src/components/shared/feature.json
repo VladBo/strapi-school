@@ -1,0 +1,42 @@
+{
+  "collectionName": "components_sections_features",
+  "info": {
+    "displayName": "Feature"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "subtitle": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "enumeration",
+      "enum": [
+        "BookOpen",
+        "Code",
+        "Users",
+        "Calendar",
+        "Award",
+        "GraduationCap",
+        "Laptop",
+        "Lightbulb",
+        "Globe",
+        "Star",
+        "Rocket",
+        "Puzzle",
+        "Brain",
+        "Server",
+        "Terminal",
+        "Layers",
+        "Shield",
+        "Heart",
+        "MessageCircle",
+        "Monitor",
+        "PenTool"
+      ]
+    }
+  },
+  "config": {}
+}

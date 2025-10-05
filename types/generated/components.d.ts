@@ -1,5 +1,113 @@
 import type { Schema, Struct } from '@strapi/strapi';
 
+export interface SectionsArticlesSection extends Struct.ComponentSchema {
+  collectionName: 'components_sections_articles_sections';
+  info: {
+    displayName: 'Articles section';
+  };
+  attributes: {
+    articles: Schema.Attribute.Relation<'oneToMany', 'api::article.article'>;
+    subtitle: Schema.Attribute.Text;
+    title: Schema.Attribute.String;
+  };
+}
+
+export interface SectionsCoursesSection extends Struct.ComponentSchema {
+  collectionName: 'components_sections_courses_sections';
+  info: {
+    displayName: 'Courses section';
+  };
+  attributes: {
+    courses: Schema.Attribute.Relation<'oneToMany', 'api::course.course'>;
+    subtitle: Schema.Attribute.String;
+    title: Schema.Attribute.String;
+  };
+}
+
+export interface SectionsFeaturesSection extends Struct.ComponentSchema {
+  collectionName: 'components_sections_features_sections';
+  info: {
+    displayName: 'Features section';
+  };
+  attributes: {
+    features: Schema.Attribute.Component<'shared.feature', true>;
+    subtitle: Schema.Attribute.Text;
+    title: Schema.Attribute.String;
+  };
+}
+
+export interface SharedBanner extends Struct.ComponentSchema {
+  collectionName: 'components_shared_banners';
+  info: {
+    displayName: 'Banner';
+  };
+  attributes: {
+    buttons: Schema.Attribute.Component<'shared.cta', true>;
+    subtitle: Schema.Attribute.String;
+    title: Schema.Attribute.String;
+  };
+}
+
+export interface SharedCta extends Struct.ComponentSchema {
+  collectionName: 'components_shared_ctas';
+  info: {
+    displayName: 'CTA';
+    icon: 'exit';
+  };
+  attributes: {
+    primary: Schema.Attribute.Boolean;
+    title: Schema.Attribute.String;
+    URL: Schema.Attribute.String;
+  };
+}
+
+export interface SharedFeature extends Struct.ComponentSchema {
+  collectionName: 'components_sections_features';
+  info: {
+    displayName: 'Feature';
+  };
+  attributes: {
+    icon: Schema.Attribute.Enumeration<
+      [
+        'BookOpen',
+        'Code',
+        'Users',
+        'Calendar',
+        'Award',
+        'GraduationCap',
+        'Laptop',
+        'Lightbulb',
+        'Globe',
+        'Star',
+        'Rocket',
+        'Puzzle',
+        'Brain',
+        'Server',
+        'Terminal',
+        'Layers',
+        'Shield',
+        'Heart',
+        'MessageCircle',
+        'Monitor',
+        'PenTool',
+      ]
+    >;
+    subtitle: Schema.Attribute.String;
+    title: Schema.Attribute.String;
+  };
+}
+
+export interface SharedHeroBanner extends Struct.ComponentSchema {
+  collectionName: 'components_shared_hero_banners';
+  info: {
+    displayName: 'Hero banner';
+  };
+  attributes: {
+    banner: Schema.Attribute.Component<'shared.banner', false>;
+    slider: Schema.Attribute.Component<'shared.slider', false>;
+  };
+}
+
 export interface SharedLinks extends Struct.ComponentSchema {
   collectionName: 'components_shared_links';
   info: {
@@ -65,6 +173,19 @@ export interface SharedSeo extends Struct.ComponentSchema {
   };
 }
 
+export interface SharedSlide extends Struct.ComponentSchema {
+  collectionName: 'components_shared_slides';
+  info: {
+    displayName: 'Slide';
+    icon: 'slideshow';
+  };
+  attributes: {
+    image: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    subtitle: Schema.Attribute.String;
+    title: Schema.Attribute.String;
+  };
+}
+
 export interface SharedSlider extends Struct.ComponentSchema {
   collectionName: 'components_shared_sliders';
   info: {
@@ -73,14 +194,14 @@ export interface SharedSlider extends Struct.ComponentSchema {
     icon: 'address-book';
   };
   attributes: {
-    files: Schema.Attribute.Media<'images', true>;
+    slides: Schema.Attribute.Component<'shared.slide', true>;
   };
 }
 
 export interface SharedSublinks extends Struct.ComponentSchema {
   collectionName: 'components_shared_sublinks';
   info: {
-    displayName: 'sublinks';
+    displayName: 'Sublinks';
   };
   attributes: {
     description: Schema.Attribute.Text;
@@ -92,11 +213,19 @@ export interface SharedSublinks extends Struct.ComponentSchema {
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
+      'sections.articles-section': SectionsArticlesSection;
+      'sections.courses-section': SectionsCoursesSection;
+      'sections.features-section': SectionsFeaturesSection;
+      'shared.banner': SharedBanner;
+      'shared.cta': SharedCta;
+      'shared.feature': SharedFeature;
+      'shared.hero-banner': SharedHeroBanner;
       'shared.links': SharedLinks;
       'shared.media': SharedMedia;
       'shared.quote': SharedQuote;
       'shared.rich-text': SharedRichText;
       'shared.seo': SharedSeo;
+      'shared.slide': SharedSlide;
       'shared.slider': SharedSlider;
       'shared.sublinks': SharedSublinks;
     }

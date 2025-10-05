@@ -1,0 +1,21 @@
+{
+  "collectionName": "components_shared_banners",
+  "info": {
+    "displayName": "Banner"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "subtitle": {
+      "type": "string"
+    },
+    "buttons": {
+      "type": "component",
+      "component": "shared.cta",
+      "repeatable": true
+    }
+  },
+  "config": {}
+}

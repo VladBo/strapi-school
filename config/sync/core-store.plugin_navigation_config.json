@@ -1,0 +1,40 @@
+{
+  "key": "plugin_navigation_config",
+  "value": {
+    "additionalFields": [],
+    "contentTypes": [
+      "api::article.article"
+    ],
+    "contentTypesNameFields": {
+      "default": [
+        "title",
+        "subject",
+        "name"
+      ],
+      "api::article.article": [
+        "title"
+      ]
+    },
+    "contentTypesPopulate": {
+      "api::article.article": []
+    },
+    "defaultContentType": "api::article.article",
+    "allowedLevels": 2,
+    "gql": {
+      "navigationItemRelated": [
+        "Article"
+      ]
+    },
+    "pathDefaultFields": {
+      "api::article.article": [
+        "slug"
+      ]
+    },
+    "cascadeMenuAttached": true,
+    "preferCustomContentTypes": false,
+    "isCacheEnabled": false
+  },
+  "type": "object",
+  "environment": null,
+  "tag": null
+}
