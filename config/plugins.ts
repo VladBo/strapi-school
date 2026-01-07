@@ -4,6 +4,7 @@ export default () => ({
   },
   h5p: {
     enabled: true,
+    resolve: './src/plugins/h5p',
     config: {
       // H5P library storage path
       librariesPath: "h5p/libraries",
