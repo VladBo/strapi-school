@@ -694,6 +694,36 @@ export interface ApiGlobalGlobal extends Struct.SingleTypeSchema {
   };
 }
 
+export interface ApiH5PContentH5PContent extends Struct.CollectionTypeSchema {
+  collectionName: 'h5p_contents';
+  info: {
+    description: 'H5P interactive content for quizzes';
+    displayName: 'H5P Content';
+    pluralName: 'h5p-contents';
+    singularName: 'h5p-content';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    h5pFile: Schema.Attribute.Media<'files'> & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::h5p-content.h5p-content'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiHeaderMenuHeaderMenu extends Struct.SingleTypeSchema {
   collectionName: 'header_menus';
   info: {
@@ -1346,6 +1376,7 @@ declare module '@strapi/strapi' {
       'api::course.course': ApiCourseCourse;
       'api::footer-menu.footer-menu': ApiFooterMenuFooterMenu;
       'api::global.global': ApiGlobalGlobal;
+      'api::h5p-content.h5p-content': ApiH5PContentH5PContent;
       'api::header-menu.header-menu': ApiHeaderMenuHeaderMenu;
       'api::homepage.homepage': ApiHomepageHomepage;
       'api::tag.tag': ApiTagTag;

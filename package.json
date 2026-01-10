@@ -40,6 +40,7 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "baseline-browser-mapping": "^2.9.12",
     "typescript": "^5"
   },
   "engines": {

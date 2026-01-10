@@ -1,0 +1,26 @@
+{
+  "kind": "collectionType",
+  "collectionName": "h5p_contents",
+  "info": {
+    "singularName": "h5p-content",
+    "pluralName": "h5p-contents",
+    "displayName": "H5P Content",
+    "description": "H5P interactive content for quizzes"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "h5pFile": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": ["files"]
+    }
+  }
+}

@@ -5,6 +5,7 @@ export default () => ({
   h5p: {
     enabled: true,
     resolve: './src/plugins/h5p',
+    contentTypes: false, // Disable plugin's content-type (we use src/api/h5p-content instead)
     config: {
       // H5P library storage path
       librariesPath: "h5p/libraries",
