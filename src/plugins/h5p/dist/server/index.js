@@ -1287,8 +1287,22 @@ const service = ({ strapi }) => ({
     <title>H5P Editor</title>
     ${cssLinks}
     <style>
-      body { margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-      .h5p-editor-wrapper { max-width: 1200px; margin: 0 auto; }
+      body { margin: 0; padding: 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+      .h5p-editor-wrapper { width: 100%; max-width: 100%; }
+      /* Force H5P Hub to full width */
+      .h5p-hub-client-container-using-mouse,
+      .h5p-hub,
+      .h5p-hub-panel,
+      .h5p-hub-panel-body,
+      .h5p-hub-content-types-section,
+      .h5p-hub-content-type-list,
+      .h5p-hub-tab-panel,
+      .h5p-hub-content-types,
+      .content-type-list,
+      .h5peditor { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
+      /* Content type items in grid */
+      .h5p-hub-content-type-list ul { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important; gap: 16px !important; width: 100% !important; }
+      .h5p-hub-content-type-list li { width: 100% !important; max-width: 100% !important; }
     </style>
 </head>
 <body>

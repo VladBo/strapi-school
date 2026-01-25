@@ -14,7 +14,7 @@
       "name": "Apache 2.0",
       "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
     },
-    "x-generation-date": "2026-01-10T22:17:32.951Z"
+    "x-generation-date": "2026-01-25T15:46:40.125Z"
   },
   "x-strapi-config": {
     "plugins": [
@@ -12825,14 +12825,14 @@
         "properties": {
           "data": {
             "required": [
-              "title",
-              "h5pFile"
+              "title"
             ],
             "type": "object",
             "properties": {
               "title": {
                 "type": "string"
               },
+              "h5pContent": {},
               "h5pFile": {
                 "oneOf": [
                   {
@@ -12903,8 +12903,7 @@
       "H5PContent": {
         "type": "object",
         "required": [
-          "title",
-          "h5pFile"
+          "title"
         ],
         "properties": {
           "id": {
@@ -12916,6 +12915,7 @@
           "title": {
             "type": "string"
           },
+          "h5pContent": {},
           "h5pFile": {
             "type": "object",
             "properties": {
@@ -13565,6 +13565,7 @@
                 "title": {
                   "type": "string"
                 },
+                "h5pContent": {},
                 "h5pFile": {
                   "type": "object",
                   "properties": {
