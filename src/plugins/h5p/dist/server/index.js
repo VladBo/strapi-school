@@ -6,28 +6,36 @@ var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
+  if ((from && typeof from === "object") || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
       if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+        __defProp(to, key, {
+          get: () => from[key],
+          enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable,
+        });
   }
   return to;
 };
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
+var __toESM = (mod, isNodeMode, target) => (
+  (target = mod != null ? __create(__getProtoOf(mod)) : {}),
+  __copyProps(
+    // If the importer is in node compatibility mode or this is not an ESM
+    // file that has been converted to a CommonJS file using a Babel-
+    // compatible transform (i.e. "__esModule" has not been set), then set
+    // "default" to the CommonJS "module.exports" for node compatibility.
+    isNodeMode || !mod || !mod.__esModule
+      ? __defProp(target, "default", { value: mod, enumerable: true })
+      : target,
+    mod,
+  )
+);
 const path = require("path");
 const fs = require("fs-extra");
 const https = require("https");
 const http = require("http");
 const AdmZip = require("adm-zip");
 const h5pServer = require("@lumieducation/h5p-server");
-const _interopDefault = (e) => e && e.__esModule ? e : { default: e };
+const _interopDefault = (e) => (e && e.__esModule ? e : { default: e });
 const path__default = /* @__PURE__ */ _interopDefault(path);
 const fs__default = /* @__PURE__ */ _interopDefault(fs);
 const https__default = /* @__PURE__ */ _interopDefault(https);
@@ -38,20 +46,18 @@ const bootstrap = async ({ strapi }) => {
   await h5pService.initialize();
   strapi.log.info("H5P plugin bootstrapped");
 };
-const destroy = ({ strapi }) => {
-};
+const destroy = ({ strapi }) => {};
 const register = ({ strapi }) => {
   strapi.customFields.register({
     name: "h5p-editor",
     plugin: "h5p",
-    type: "json"
+    type: "json",
     // Store H5P content as JSON
   });
 };
 const config = {
   default: {},
-  validator() {
-  }
+  validator() {},
 };
 const content = {
   schema: {
@@ -61,45 +67,47 @@ const content = {
       singularName: "content",
       pluralName: "contents",
       displayName: "H5P Content",
-      description: "H5P interactive content"
+      description: "H5P interactive content",
     },
     options: {
-      draftAndPublish: true
+      draftAndPublish: true,
     },
     pluginOptions: {
       "content-manager": {
-        visible: true
+        visible: true,
       },
       "content-type-builder": {
-        visible: false
-      }
+        visible: false,
+      },
     },
     attributes: {
       title: {
         type: "string",
-        required: true
+        required: true,
       },
       slug: {
         type: "uid",
-        targetField: "title"
+        targetField: "title",
       },
       h5pContent: {
         type: "json",
-        customField: "plugin::h5p.h5p-editor"
-      }
-    }
-  }
+        customField: "plugin::h5p.h5p-editor",
+      },
+    },
+  },
 };
 const contentTypes = {
-  content
+  content,
 };
 const controller = ({ strapi }) => ({
   // Content methods
   async findContent(ctx) {
     try {
-      const contents = await strapi.documents("api::h5p-content.h5p-content").findMany({
-        ...ctx.query
-      });
+      const contents = await strapi
+        .documents("api::h5p-content.h5p-content")
+        .findMany({
+          ...ctx.query,
+        });
       ctx.body = contents;
     } catch (err) {
       ctx.throw(500, err);
@@ -108,10 +116,12 @@ const controller = ({ strapi }) => ({
   async findOneContent(ctx) {
     const { id } = ctx.params;
     try {
-      const content2 = await strapi.documents("api::h5p-content.h5p-content").findOne({
-        documentId: id,
-        ...ctx.query
-      });
+      const content2 = await strapi
+        .documents("api::h5p-content.h5p-content")
+        .findOne({
+          documentId: id,
+          ...ctx.query,
+        });
       ctx.body = content2;
     } catch (err) {
       ctx.throw(500, err);
@@ -120,18 +130,23 @@ const controller = ({ strapi }) => ({
   async createContent(ctx) {
     try {
       const { title, library, parameters, metadata } = ctx.request.body;
-      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const slug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
       const embedCode = `<iframe src="${strapi.config.get("server.url")}/api/h5p/content/${slug}/embed" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`;
-      const newContent = await strapi.documents("api::h5p-content.h5p-content").create({
-        data: {
-          title,
-          slug,
-          library,
-          parameters,
-          metadata,
-          embedCode
-        }
-      });
+      const newContent = await strapi
+        .documents("api::h5p-content.h5p-content")
+        .create({
+          data: {
+            title,
+            slug,
+            library,
+            parameters,
+            metadata,
+            embedCode,
+          },
+        });
       ctx.body = newContent;
     } catch (err) {
       ctx.throw(500, err);
@@ -140,10 +155,12 @@ const controller = ({ strapi }) => ({
   async updateContent(ctx) {
     const { id } = ctx.params;
     try {
-      const updatedContent = await strapi.documents("api::h5p-content.h5p-content").update({
-        documentId: id,
-        data: ctx.request.body
-      });
+      const updatedContent = await strapi
+        .documents("api::h5p-content.h5p-content")
+        .update({
+          documentId: id,
+          data: ctx.request.body,
+        });
       ctx.body = updatedContent;
     } catch (err) {
       ctx.throw(500, err);
@@ -152,9 +169,11 @@ const controller = ({ strapi }) => ({
   async deleteContent(ctx) {
     const { id } = ctx.params;
     try {
-      const deletedContent = await strapi.documents("api::h5p-content.h5p-content").delete({
-        documentId: id
-      });
+      const deletedContent = await strapi
+        .documents("api::h5p-content.h5p-content")
+        .delete({
+          documentId: id,
+        });
       ctx.body = deletedContent;
     } catch (err) {
       ctx.throw(500, err);
@@ -206,9 +225,11 @@ const controller = ({ strapi }) => ({
   async playContent(ctx) {
     const { id } = ctx.params;
     try {
-      const content2 = await strapi.documents("api::h5p-content.h5p-content").findOne({
-        documentId: id
-      });
+      const content2 = await strapi
+        .documents("api::h5p-content.h5p-content")
+        .findOne({
+          documentId: id,
+        });
       if (!content2) {
         ctx.throw(404, "Content not found");
       }
@@ -223,13 +244,17 @@ const controller = ({ strapi }) => ({
   async getEmbedCode(ctx) {
     const { id } = ctx.params;
     try {
-      const content2 = await strapi.documents("api::h5p-content.h5p-content").findOne({
-        documentId: id
-      });
+      const content2 = await strapi
+        .documents("api::h5p-content.h5p-content")
+        .findOne({
+          documentId: id,
+        });
       if (!content2) {
         ctx.throw(404, "Content not found");
       }
-      const embedCode = content2.embedCode || `<iframe src="${strapi.config.get("server.url")}/api/h5p/content/${id}/play" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`;
+      const embedCode =
+        content2.embedCode ||
+        `<iframe src="${strapi.config.get("server.url")}/api/h5p/content/${id}/play" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`;
       ctx.body = { embedCode };
     } catch (err) {
       ctx.throw(500, err);
@@ -249,9 +274,11 @@ const controller = ({ strapi }) => ({
   async getEditorEdit(ctx) {
     const { id } = ctx.params;
     try {
-      const content2 = await strapi.documents("api::h5p-content.h5p-content").findOne({
-        documentId: id
-      });
+      const content2 = await strapi
+        .documents("api::h5p-content.h5p-content")
+        .findOne({
+          documentId: id,
+        });
       if (!content2) {
         ctx.throw(404, "Content not found");
       }
@@ -267,14 +294,16 @@ const controller = ({ strapi }) => ({
     try {
       const { contentId, library, parameters, metadata } = ctx.request.body;
       if (contentId) {
-        const updatedContent = await strapi.documents("api::h5p-content.h5p-content").update({
-          documentId: contentId,
-          data: {
-            library,
-            parameters,
-            metadata
-          }
-        });
+        const updatedContent = await strapi
+          .documents("api::h5p-content.h5p-content")
+          .update({
+            documentId: contentId,
+            data: {
+              library,
+              parameters,
+              metadata,
+            },
+          });
         ctx.body = updatedContent;
       } else {
         ctx.throw(400, "Content ID required for saving");
@@ -282,7 +311,7 @@ const controller = ({ strapi }) => ({
     } catch (err) {
       ctx.throw(500, err);
     }
-  }
+  },
 });
 const h5pEditorController = ({ strapi }) => ({
   /**
@@ -307,9 +336,17 @@ const h5pEditorController = ({ strapi }) => ({
     try {
       const { type, file } = ctx.params;
       const h5pServerPath = require.resolve("@lumieducation/h5p-server");
-      const h5pPackageRoot = path__default.default.join(h5pServerPath, "../../../");
-      const assetPath = path__default.default.join(h5pPackageRoot, "build/assets/core", type, file || "");
-      if (!await fs__default.default.pathExists(assetPath)) {
+      const h5pPackageRoot = path__default.default.join(
+        h5pServerPath,
+        "../../../",
+      );
+      const assetPath = path__default.default.join(
+        h5pPackageRoot,
+        "build/assets/core",
+        type,
+        file || "",
+      );
+      if (!(await fs__default.default.pathExists(assetPath))) {
         ctx.throw(404, "Asset not found");
         return;
       }
@@ -323,7 +360,7 @@ const h5pEditorController = ({ strapi }) => ({
         ".jpg": "image/jpeg",
         ".woff": "font/woff",
         ".woff2": "font/woff2",
-        ".ttf": "font/ttf"
+        ".ttf": "font/ttf",
       };
       ctx.type = contentTypes2[ext] || "application/octet-stream";
       ctx.body = await fs__default.default.readFile(assetPath);
@@ -339,9 +376,17 @@ const h5pEditorController = ({ strapi }) => ({
     try {
       const { type, file } = ctx.params;
       const h5pServerPath = require.resolve("@lumieducation/h5p-server");
-      const h5pPackageRoot = path__default.default.join(h5pServerPath, "../../../");
-      const assetPath = path__default.default.join(h5pPackageRoot, "build/assets/editor", type, file || "");
-      if (!await fs__default.default.pathExists(assetPath)) {
+      const h5pPackageRoot = path__default.default.join(
+        h5pServerPath,
+        "../../../",
+      );
+      const assetPath = path__default.default.join(
+        h5pPackageRoot,
+        "build/assets/editor",
+        type,
+        file || "",
+      );
+      if (!(await fs__default.default.pathExists(assetPath))) {
         ctx.throw(404, "Asset not found");
         return;
       }
@@ -355,7 +400,7 @@ const h5pEditorController = ({ strapi }) => ({
         ".jpg": "image/jpeg",
         ".woff": "font/woff",
         ".woff2": "font/woff2",
-        ".ttf": "font/ttf"
+        ".ttf": "font/ttf",
       };
       ctx.type = contentTypes2[ext] || "application/octet-stream";
       ctx.body = await fs__default.default.readFile(assetPath);
@@ -371,65 +416,79 @@ const h5pEditorController = ({ strapi }) => ({
     try {
       const h5pService = strapi.plugin("h5p").service("service");
       const editor = h5pService.getEditor();
+      const ajaxEndpoint = new h5pServer.H5PAjaxEndpoint(editor);
       // Support both GET (query) and POST (body) for action parameter
       const action = ctx.query.action || ctx.request.body?.action;
+      const language = ctx.query.language || ctx.request.body?.language;
       const user = {
         id: ctx.state.user?.id || "1",
         name: ctx.state.user?.username || "anonymous",
         canUpdateAndInstallLibraries: true,
         canInstallRecommended: true,
         canCreateRestricted: true,
-        type: "local"
+        type: "local",
       };
-      switch (action) {
-        case "libraries":
-          const libraries = await editor.getLibraries();
-          ctx.body = libraries;
-          break;
-        case "library-install":
-          const { libraryId } = ctx.request.body;
-          const installed = await editor.installLibraryFromHub(libraryId, user);
-          ctx.body = { success: true, installed };
-          break;
-        case "library-upload":
-          const { file } = ctx.request.files || {};
-          if (file) {
-            const result = await editor.uploadPackage(file.path, user);
-            ctx.body = result;
-          } else {
-            ctx.throw(400, "No file uploaded");
-          }
-          break;
-        case "content-type-cache":
-          const contentTypes2 = await editor.getContentTypeCache(user);
-          ctx.body = contentTypes2;
-          break;
-        case "content-hub-metadata-cache":
-          // Return content hub metadata for filtering (levels, languages, licenses, disciplines)
-          try {
-            if (editor.contentHubService && typeof editor.contentHubService.getMetadata === 'function') {
-              const metadata = await editor.contentHubService.getMetadata();
-              ctx.body = metadata;
-            } else {
-              // Provide default metadata structure if service is not available
-              ctx.body = {
-                levels: [],
-                languages: [],
-                licenses: [],
-                disciplines: []
-              };
-            }
-          } catch (metadataError) {
-            strapi.log.warn("Could not fetch content hub metadata:", metadataError.message);
-            ctx.body = { levels: [], languages: [], licenses: [], disciplines: [] };
-          }
-          break;
-        default:
-          ctx.throw(400, `Unknown action: ${action}`);
+      if (!action) {
+        ctx.throw(400, "Missing action parameter");
       }
+
+      const toH5PFile = (file2) => {
+        if (!file2) return void 0;
+        return {
+          name:
+            file2.name || file2.originalFilename || file2.filename || "upload",
+          data: file2.buffer,
+          tempFilePath: file2.path || file2.filepath,
+          size: file2.size,
+        };
+      };
+
+      if (ctx.method === "GET") {
+        const { machineName, majorVersion, minorVersion } = ctx.query;
+        const result = await ajaxEndpoint.getAjax(
+          action,
+          machineName,
+          majorVersion,
+          minorVersion,
+          language,
+          user,
+        );
+        ctx.body = result;
+        return;
+      }
+
+      const body = ctx.request.body || {};
+      const files = ctx.request.files || {};
+      const filesFile = toH5PFile(files.file);
+      const libraryUploadFile = toH5PFile(files.h5p || files.file);
+      const id = ctx.query.id || body.id || body.libraryId;
+      const hubId = ctx.query.hubId || body.hubId;
+      const result = await ajaxEndpoint.postAjax(
+        action,
+        body,
+        language,
+        user,
+        filesFile,
+        id,
+        void 0,
+        libraryUploadFile,
+        hubId,
+      );
+      ctx.body = result;
     } catch (error) {
+      const status = error?.httpStatusCode || error?.status || 500;
+      const errorId = error?.errorId || error?.name || "h5p-error";
+      const message = error?.message || "Internal Server Error";
       strapi.log.error("H5P AJAX error:", error);
-      ctx.throw(500, error);
+      ctx.status = status;
+      ctx.body = {
+        data: null,
+        error: {
+          status,
+          name: errorId,
+          message,
+        },
+      };
     }
   },
   /**
@@ -440,16 +499,18 @@ const h5pEditorController = ({ strapi }) => ({
       const { contentId } = ctx.params;
       const h5pService = strapi.plugin("h5p").service("service");
       const editor = h5pService.getEditor();
-      const content2 = await strapi.documents("api::h5p-content.h5p-content").findOne({
-        documentId: contentId
-      });
+      const content2 = await strapi
+        .documents("api::h5p-content.h5p-content")
+        .findOne({
+          documentId: contentId,
+        });
       if (!content2) {
         ctx.throw(404, "Content not found");
       }
       ctx.body = {
         params: content2.h5pContent?.params || {},
         metadata: content2.h5pContent?.metadata || {},
-        library: content2.h5pContent?.library || ""
+        library: content2.h5pContent?.library || "",
       };
     } catch (error) {
       strapi.log.error("Error getting content parameters:", error);
@@ -465,7 +526,7 @@ const h5pEditorController = ({ strapi }) => ({
       const h5pService = strapi.plugin("h5p").service("service");
       const editor = h5pService.getEditor();
       const libraryData = await editor.getLibraryData(
-        `${ubername} ${majorVersion}.${minorVersion}`
+        `${ubername} ${majorVersion}.${minorVersion}`,
       );
       ctx.body = libraryData;
     } catch (error) {
@@ -484,7 +545,7 @@ const h5pEditorController = ({ strapi }) => ({
       const libraryPath = await editor.libraryStorage.getLibraryPath({
         machineName: ubername.split("-")[0],
         majorVersion: parseInt(ubername.split("-")[1]),
-        minorVersion: parseInt(ubername.split("-")[2])
+        minorVersion: parseInt(ubername.split("-")[2]),
       });
       const filePath = `${libraryPath}/${file}`;
       const ext = file.split(".").pop();
@@ -494,10 +555,13 @@ const h5pEditorController = ({ strapi }) => ({
         json: "application/json",
         svg: "image/svg+xml",
         png: "image/png",
-        jpg: "image/jpeg"
+        jpg: "image/jpeg",
       };
       ctx.type = contentTypes2[ext] || "application/octet-stream";
-      ctx.body = await strapi.plugin("h5p").service("service").readFile(filePath);
+      ctx.body = await strapi
+        .plugin("h5p")
+        .service("service")
+        .readFile(filePath);
     } catch (error) {
       strapi.log.error("Error getting library file:", error);
       ctx.throw(404, "File not found");
@@ -520,10 +584,13 @@ const h5pEditorController = ({ strapi }) => ({
         json: "application/json",
         svg: "image/svg+xml",
         png: "image/png",
-        jpg: "image/jpeg"
+        jpg: "image/jpeg",
       };
       ctx.type = contentTypes2[ext] || "application/octet-stream";
-      ctx.body = await strapi.plugin("h5p").service("service").readFile(filePath);
+      ctx.body = await strapi
+        .plugin("h5p")
+        .service("service")
+        .readFile(filePath);
     } catch (error) {
       strapi.log.error("Error getting content file:", error);
       ctx.throw(404, "File not found");
@@ -540,7 +607,7 @@ const h5pEditorController = ({ strapi }) => ({
       const user = {
         id: ctx.state.user?.id || "1",
         name: ctx.state.user?.username || "anonymous",
-        type: "local"
+        type: "local",
       };
       const h5pFile = await editor.exportContent(contentId, user);
       ctx.attachment(`${contentId}.h5p`);
@@ -562,11 +629,13 @@ const h5pEditorController = ({ strapi }) => ({
       const user = {
         id: ctx.state.user?.id || "1",
         name: ctx.state.user?.username || "anonymous",
-        type: "local"
+        type: "local",
       };
-      const content2 = await strapi.documents("api::h5p-content.h5p-content").findOne({
-        documentId: contentId
-      });
+      const content2 = await strapi
+        .documents("api::h5p-content.h5p-content")
+        .findOne({
+          documentId: contentId,
+        });
       if (!content2) {
         ctx.throw(404, "Content not found");
       }
@@ -589,11 +658,11 @@ const h5pEditorController = ({ strapi }) => ({
       strapi.log.error("Error playing content:", error);
       ctx.throw(500, error);
     }
-  }
+  },
 });
 const controllers = {
   controller,
-  h5pEditorController
+  h5pEditorController,
 };
 const middlewares = {};
 const policies = {};
@@ -605,8 +674,8 @@ const contentAPIRoutes = [
     handler: "controller.findContent",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   {
     method: "GET",
@@ -614,8 +683,8 @@ const contentAPIRoutes = [
     handler: "controller.findOneContent",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   {
     method: "POST",
@@ -623,8 +692,8 @@ const contentAPIRoutes = [
     handler: "controller.createContent",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   {
     method: "PUT",
@@ -632,8 +701,8 @@ const contentAPIRoutes = [
     handler: "controller.updateContent",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   {
     method: "DELETE",
@@ -641,8 +710,8 @@ const contentAPIRoutes = [
     handler: "controller.deleteContent",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   // Rendering and embed routes
   {
@@ -651,8 +720,8 @@ const contentAPIRoutes = [
     handler: "controller.playContent",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   {
     method: "GET",
@@ -660,9 +729,9 @@ const contentAPIRoutes = [
     handler: "controller.getEmbedCode",
     config: {
       policies: [],
-      auth: false
-    }
-  }
+      auth: false,
+    },
+  },
 ];
 const adminAPIRoutes = [
   {
@@ -670,33 +739,33 @@ const adminAPIRoutes = [
     path: "/libraries",
     handler: "controller.getLibraries",
     config: {
-      policies: []
-    }
+      policies: [],
+    },
   },
   {
     method: "GET",
     path: "/libraries/available",
     handler: "controller.getAvailableLibraries",
     config: {
-      policies: []
-    }
+      policies: [],
+    },
   },
   {
     method: "POST",
     path: "/libraries/install",
     handler: "controller.installLibrary",
     config: {
-      policies: []
-    }
+      policies: [],
+    },
   },
   {
     method: "POST",
     path: "/libraries/upload",
     handler: "controller.uploadLibrary",
     config: {
-      policies: []
-    }
-  }
+      policies: [],
+    },
+  },
 ];
 const editorAPIRoutes = [
   {
@@ -705,8 +774,8 @@ const editorAPIRoutes = [
     handler: "controller.getEditorNew",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   {
     method: "GET",
@@ -714,8 +783,8 @@ const editorAPIRoutes = [
     handler: "controller.getEditorEdit",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   {
     method: "POST",
@@ -723,9 +792,9 @@ const editorAPIRoutes = [
     handler: "controller.saveEditorContent",
     config: {
       policies: [],
-      auth: false
-    }
-  }
+      auth: false,
+    },
+  },
 ];
 const h5pEditorRoutes = [
   // Get editor page (full HTML page)
@@ -735,8 +804,8 @@ const h5pEditorRoutes = [
     handler: "h5pEditorController.getEditorPage",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   // Serve H5P core assets (CSS/JS)
   {
@@ -745,8 +814,8 @@ const h5pEditorRoutes = [
     handler: "h5pEditorController.serveCoreAsset",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   // Serve H5P editor assets
   {
@@ -755,8 +824,8 @@ const h5pEditorRoutes = [
     handler: "h5pEditorController.serveEditorAsset",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   // Get editor content (POST for write operations)
   {
@@ -765,9 +834,9 @@ const h5pEditorRoutes = [
     handler: "h5pEditorController.ajax",
     config: {
       policies: [],
-      auth: false
+      auth: false,
       // H5P editor needs unauthenticated access for some requests
-    }
+    },
   },
   // Get editor content (GET for read operations like content-type-cache)
   {
@@ -776,8 +845,8 @@ const h5pEditorRoutes = [
     handler: "h5pEditorController.ajax",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   // Get content parameters
   {
@@ -785,8 +854,8 @@ const h5pEditorRoutes = [
     path: "/params/:contentId",
     handler: "h5pEditorController.getContentParameters",
     config: {
-      policies: []
-    }
+      policies: [],
+    },
   },
   // Get editor library data
   {
@@ -794,8 +863,8 @@ const h5pEditorRoutes = [
     path: "/editor/:ubername/:majorVersion/:minorVersion",
     handler: "h5pEditorController.getEditorLibrary",
     config: {
-      policies: []
-    }
+      policies: [],
+    },
   },
   // Get library file
   {
@@ -804,8 +873,8 @@ const h5pEditorRoutes = [
     handler: "h5pEditorController.getLibraryFile",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   // Get content file
   {
@@ -814,8 +883,8 @@ const h5pEditorRoutes = [
     handler: "h5pEditorController.getContentFile",
     config: {
       policies: [],
-      auth: false
-    }
+      auth: false,
+    },
   },
   // Download content
   {
@@ -823,8 +892,8 @@ const h5pEditorRoutes = [
     path: "/download/:contentId",
     handler: "h5pEditorController.downloadContent",
     config: {
-      policies: []
-    }
+      policies: [],
+    },
   },
   // Play content
   {
@@ -832,27 +901,27 @@ const h5pEditorRoutes = [
     path: "/play/:contentId",
     handler: "h5pEditorController.playContent",
     config: {
-      policies: []
-    }
-  }
+      policies: [],
+    },
+  },
 ];
 const routes = {
   "content-api": {
     type: "content-api",
-    routes: contentAPIRoutes
+    routes: contentAPIRoutes,
   },
   admin: {
     type: "admin",
-    routes: adminAPIRoutes
+    routes: adminAPIRoutes,
   },
   "editor-api": {
     type: "content-api",
-    routes: editorAPIRoutes
+    routes: editorAPIRoutes,
   },
   "h5p-editor": {
     type: "content-api",
-    routes: h5pEditorRoutes
-  }
+    routes: h5pEditorRoutes,
+  },
 };
 const service = ({ strapi }) => ({
   h5pEditor: null,
@@ -866,11 +935,22 @@ const service = ({ strapi }) => ({
       return { editor: this.h5pEditor, player: this.h5pPlayer };
     }
     try {
-      const h5pPath = path__default.default.join(strapi.dirs.static.public, "uploads", "h5p");
-      await fs__default.default.ensureDir(path__default.default.join(h5pPath, "content"));
-      await fs__default.default.ensureDir(path__default.default.join(h5pPath, "libraries"));
-      await fs__default.default.ensureDir(path__default.default.join(h5pPath, "temp"));
-      const baseUrl = strapi.config.get("server.url") || "http://localhost:1337";
+      const h5pPath = path__default.default.join(
+        strapi.dirs.static.public,
+        "uploads",
+        "h5p",
+      );
+      await fs__default.default.ensureDir(
+        path__default.default.join(h5pPath, "content"),
+      );
+      await fs__default.default.ensureDir(
+        path__default.default.join(h5pPath, "libraries"),
+      );
+      await fs__default.default.ensureDir(
+        path__default.default.join(h5pPath, "temp"),
+      );
+      const baseUrl =
+        strapi.config.get("server.url") || "http://localhost:1337";
       this.h5pConfig = new h5pServer.H5PConfig(void 0, {
         baseUrl: baseUrl,
         contentHubEnabled: true,
@@ -878,26 +958,33 @@ const service = ({ strapi }) => ({
         editorLibraryUrl: `/api/h5p/editor`,
         librariesUrl: `/api/h5p/libraries`,
         contentUrl: `/api/h5p/content`,
-        ajaxUrl: `/api/h5p/ajax`
+        ajaxUrl: `/api/h5p/ajax`,
       });
       const contentStorage = new h5pServer.fsImplementations.FileContentStorage(
-        path__default.default.join(h5pPath, "content")
+        path__default.default.join(h5pPath, "content"),
       );
       const libraryStorage = new h5pServer.fsImplementations.FileLibraryStorage(
-        path__default.default.join(h5pPath, "libraries")
+        path__default.default.join(h5pPath, "libraries"),
       );
-      const temporaryStorage = new h5pServer.fsImplementations.DirectoryTemporaryFileStorage(
-        path__default.default.join(h5pPath, "temp")
+      const temporaryStorage =
+        new h5pServer.fsImplementations.DirectoryTemporaryFileStorage(
+          path__default.default.join(h5pPath, "temp"),
+        );
+      const cache = new h5pServer.cacheImplementations.CachedKeyValueStorage(
+        "memory",
       );
-      const cache = new h5pServer.cacheImplementations.CachedKeyValueStorage("memory");
       this.h5pEditor = new h5pServer.H5PEditor(
         cache,
         this.h5pConfig,
         libraryStorage,
         contentStorage,
-        temporaryStorage
+        temporaryStorage,
       );
-      this.h5pPlayer = new h5pServer.H5PPlayer(libraryStorage, contentStorage, this.h5pConfig);
+      this.h5pPlayer = new h5pServer.H5PPlayer(
+        libraryStorage,
+        contentStorage,
+        this.h5pConfig,
+      );
       strapi.log.info("✅ H5P Editor and Player initialized successfully");
       return { editor: this.h5pEditor, player: this.h5pPlayer };
     } catch (error) {
@@ -927,15 +1014,25 @@ const service = ({ strapi }) => ({
    * Get installed H5P libraries
    */
   async getInstalledLibraries() {
-    const librariesPath = path__default.default.join(strapi.dirs.static.public, "uploads", "h5p", "libraries");
+    const librariesPath = path__default.default.join(
+      strapi.dirs.static.public,
+      "uploads",
+      "h5p",
+      "libraries",
+    );
     try {
       await fs__default.default.ensureDir(librariesPath);
       const libraries = await fs__default.default.readdir(librariesPath);
       const libraryDetails = await Promise.all(
         libraries.map(async (lib) => {
-          const libraryJsonPath = path__default.default.join(librariesPath, lib, "library.json");
+          const libraryJsonPath = path__default.default.join(
+            librariesPath,
+            lib,
+            "library.json",
+          );
           try {
-            const libraryJson = await fs__default.default.readJson(libraryJsonPath);
+            const libraryJson =
+              await fs__default.default.readJson(libraryJsonPath);
             return {
               name: lib,
               machineName: libraryJson.machineName || lib,
@@ -943,17 +1040,17 @@ const service = ({ strapi }) => ({
               majorVersion: libraryJson.majorVersion || 1,
               minorVersion: libraryJson.minorVersion || 0,
               patchVersion: libraryJson.patchVersion || 0,
-              path: path__default.default.join(librariesPath, lib)
+              path: path__default.default.join(librariesPath, lib),
             };
           } catch (error) {
             return {
               name: lib,
               machineName: lib,
               title: lib,
-              path: path__default.default.join(librariesPath, lib)
+              path: path__default.default.join(librariesPath, lib),
             };
           }
-        })
+        }),
       );
       return libraryDetails;
     } catch (error) {
@@ -966,28 +1063,36 @@ const service = ({ strapi }) => ({
    */
   async downloadFile(url, dest) {
     return new Promise((resolve, reject) => {
-      const protocol = url.startsWith("https") ? https__default.default : http__default.default;
+      const protocol = url.startsWith("https")
+        ? https__default.default
+        : http__default.default;
       const file = fs__default.default.createWriteStream(dest);
-      protocol.get(url, (response) => {
-        if (response.statusCode === 302 || response.statusCode === 301) {
-          file.close();
+      protocol
+        .get(url, (response) => {
+          if (response.statusCode === 302 || response.statusCode === 301) {
+            file.close();
+            fs__default.default.unlinkSync(dest);
+            return this.downloadFile(response.headers.location, dest)
+              .then(resolve)
+              .catch(reject);
+          }
+          if (response.statusCode !== 200) {
+            file.close();
+            fs__default.default.unlinkSync(dest);
+            return reject(
+              new Error(`Failed to download: ${response.statusCode}`),
+            );
+          }
+          response.pipe(file);
+          file.on("finish", () => {
+            file.close();
+            resolve();
+          });
+        })
+        .on("error", (err) => {
           fs__default.default.unlinkSync(dest);
-          return this.downloadFile(response.headers.location, dest).then(resolve).catch(reject);
-        }
-        if (response.statusCode !== 200) {
-          file.close();
-          fs__default.default.unlinkSync(dest);
-          return reject(new Error(`Failed to download: ${response.statusCode}`));
-        }
-        response.pipe(file);
-        file.on("finish", () => {
-          file.close();
-          resolve();
+          reject(err);
         });
-      }).on("error", (err) => {
-        fs__default.default.unlinkSync(dest);
-        reject(err);
-      });
       file.on("error", (err) => {
         fs__default.default.unlinkSync(dest);
         reject(err);
@@ -999,17 +1104,22 @@ const service = ({ strapi }) => ({
    */
   async getAvailableLibraries() {
     try {
-      const response = await fetch("https://h5p.org/h5p-php-library/libraries.json", {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "Strapi-H5P/1.0"
-        }
-      });
+      const response = await fetch(
+        "https://h5p.org/h5p-php-library/libraries.json",
+        {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "Strapi-H5P/1.0",
+          },
+        },
+      );
       if (!response.ok) {
         throw new Error(`H5P Hub API error: ${response.statusText}`);
       }
       const data = await response.json();
-      const libraries = Array.isArray(data) ? data : data.contentTypes || data.libraries || [];
+      const libraries = Array.isArray(data)
+        ? data
+        : data.contentTypes || data.libraries || [];
       return libraries.map((lib) => ({
         id: lib.id || lib.machineName,
         machineName: lib.machineName || lib.machine_name || lib.id,
@@ -1022,7 +1132,7 @@ const service = ({ strapi }) => ({
         icon: lib.icon,
         screenshots: lib.screenshots || [],
         license: lib.license,
-        owner: lib.owner
+        owner: lib.owner,
       }));
     } catch (error) {
       strapi.log.error("Failed to fetch from H5P Hub:", error);
@@ -1033,7 +1143,7 @@ const service = ({ strapi }) => ({
           description: "Create videos enriched with interactions",
           majorVersion: 1,
           minorVersion: 22,
-          patchVersion: 0
+          patchVersion: 0,
         },
         {
           machineName: "H5P.QuestionSet",
@@ -1041,7 +1151,7 @@ const service = ({ strapi }) => ({
           description: "Create a sequence of various question types",
           majorVersion: 1,
           minorVersion: 17,
-          patchVersion: 0
+          patchVersion: 0,
         },
         {
           machineName: "H5P.CoursePresentation",
@@ -1049,8 +1159,8 @@ const service = ({ strapi }) => ({
           description: "Create a presentation with interactive slides",
           majorVersion: 1,
           minorVersion: 24,
-          patchVersion: 0
-        }
+          patchVersion: 0,
+        },
       ];
     }
   },
@@ -1060,40 +1170,66 @@ const service = ({ strapi }) => ({
   async installLibrary(libraryName, version) {
     try {
       strapi.log.info(`Installing H5P library: ${libraryName}`);
-      const librariesPath = path__default.default.join(strapi.dirs.static.public, "uploads", "h5p", "libraries");
-      const tempPath = path__default.default.join(strapi.dirs.static.public, "uploads", "h5p", "temp");
+      const librariesPath = path__default.default.join(
+        strapi.dirs.static.public,
+        "uploads",
+        "h5p",
+        "libraries",
+      );
+      const tempPath = path__default.default.join(
+        strapi.dirs.static.public,
+        "uploads",
+        "h5p",
+        "temp",
+      );
       await fs__default.default.ensureDir(librariesPath);
       await fs__default.default.ensureDir(tempPath);
       const availableLibraries = await this.getAvailableLibraries();
-      const libraryInfo = availableLibraries.find((lib) => lib.machineName === libraryName);
+      const libraryInfo = availableLibraries.find(
+        (lib) => lib.machineName === libraryName,
+      );
       if (!libraryInfo) {
         throw new Error(`Library ${libraryName} not found in H5P Hub`);
       }
-      const versionStr = version || `${libraryInfo.majorVersion}.${libraryInfo.minorVersion}`;
-      const downloadUrl = libraryInfo.downloadUrl || `https://api.h5p.org/v1/content-types/${libraryInfo.id || libraryName}/download?version=${versionStr}`;
+      const versionStr =
+        version || `${libraryInfo.majorVersion}.${libraryInfo.minorVersion}`;
+      const downloadUrl =
+        libraryInfo.downloadUrl ||
+        `https://api.h5p.org/v1/content-types/${libraryInfo.id || libraryName}/download?version=${versionStr}`;
       strapi.log.info(`Downloading from: ${downloadUrl}`);
-      const tempFile = path__default.default.join(tempPath, `${libraryName}-${Date.now()}.h5p`);
+      const tempFile = path__default.default.join(
+        tempPath,
+        `${libraryName}-${Date.now()}.h5p`,
+      );
       await this.downloadFile(downloadUrl, tempFile);
       const zip = new AdmZip__default.default(tempFile);
-      const libraryPath = path__default.default.join(librariesPath, libraryName);
+      const libraryPath = path__default.default.join(
+        librariesPath,
+        libraryName,
+      );
       if (await fs__default.default.pathExists(libraryPath)) {
         await fs__default.default.remove(libraryPath);
       }
       await fs__default.default.ensureDir(libraryPath);
       zip.extractAllTo(libraryPath, true);
       await fs__default.default.remove(tempFile);
-      const libraryJsonPath = path__default.default.join(libraryPath, "library.json");
+      const libraryJsonPath = path__default.default.join(
+        libraryPath,
+        "library.json",
+      );
       let installedVersion = versionStr;
       if (await fs__default.default.pathExists(libraryJsonPath)) {
         const libraryJson = await fs__default.default.readJson(libraryJsonPath);
         installedVersion = `${libraryJson.majorVersion}.${libraryJson.minorVersion}.${libraryJson.patchVersion}`;
       }
-      strapi.log.info(`Successfully installed ${libraryName} v${installedVersion}`);
+      strapi.log.info(
+        `Successfully installed ${libraryName} v${installedVersion}`,
+      );
       return {
         success: true,
         library: libraryName,
         version: installedVersion,
-        message: `Successfully installed ${libraryName} v${installedVersion}`
+        message: `Successfully installed ${libraryName} v${installedVersion}`,
       };
     } catch (error) {
       strapi.log.error("Failed to install library:", error);
@@ -1106,23 +1242,43 @@ const service = ({ strapi }) => ({
   async uploadLibraryPackage(file) {
     try {
       strapi.log.info(`Uploading H5P library package: ${file.name}`);
-      const librariesPath = path__default.default.join(strapi.dirs.static.public, "uploads", "h5p", "libraries");
-      const tempPath = path__default.default.join(strapi.dirs.static.public, "uploads", "h5p", "temp");
+      const librariesPath = path__default.default.join(
+        strapi.dirs.static.public,
+        "uploads",
+        "h5p",
+        "libraries",
+      );
+      const tempPath = path__default.default.join(
+        strapi.dirs.static.public,
+        "uploads",
+        "h5p",
+        "temp",
+      );
       await fs__default.default.ensureDir(librariesPath);
       await fs__default.default.ensureDir(tempPath);
-      const tempFile = path__default.default.join(tempPath, `upload-${Date.now()}.h5p`);
+      const tempFile = path__default.default.join(
+        tempPath,
+        `upload-${Date.now()}.h5p`,
+      );
       await fs__default.default.move(file.path, tempFile);
       const zip = new AdmZip__default.default(tempFile);
       const libraryJsonEntry = zip.getEntry("library.json");
       if (!libraryJsonEntry) {
         throw new Error("Invalid H5P package: library.json not found");
       }
-      const libraryJson = JSON.parse(libraryJsonEntry.getData().toString("utf8"));
+      const libraryJson = JSON.parse(
+        libraryJsonEntry.getData().toString("utf8"),
+      );
       const libraryName = libraryJson.machineName;
       if (!libraryName) {
-        throw new Error("Invalid H5P package: machineName not found in library.json");
+        throw new Error(
+          "Invalid H5P package: machineName not found in library.json",
+        );
       }
-      const libraryPath = path__default.default.join(librariesPath, libraryName);
+      const libraryPath = path__default.default.join(
+        librariesPath,
+        libraryName,
+      );
       if (await fs__default.default.pathExists(libraryPath)) {
         await fs__default.default.remove(libraryPath);
       }
@@ -1130,12 +1286,14 @@ const service = ({ strapi }) => ({
       zip.extractAllTo(libraryPath, true);
       await fs__default.default.remove(tempFile);
       const installedVersion = `${libraryJson.majorVersion}.${libraryJson.minorVersion}.${libraryJson.patchVersion}`;
-      strapi.log.info(`Successfully uploaded ${libraryName} v${installedVersion}`);
+      strapi.log.info(
+        `Successfully uploaded ${libraryName} v${installedVersion}`,
+      );
       return {
         success: true,
         library: libraryName,
         version: installedVersion,
-        message: `Successfully uploaded ${libraryName} v${installedVersion}`
+        message: `Successfully uploaded ${libraryName} v${installedVersion}`,
       };
     } catch (error) {
       strapi.log.error("Failed to upload library:", error);
@@ -1219,16 +1377,17 @@ const service = ({ strapi }) => ({
         canUpdateAndInstallLibraries: true,
         canInstallRecommended: true,
         canCreateRestricted: true,
-        type: "local"
+        type: "local",
       };
 
-      const baseUrl = strapi.config.get("server.url") || "http://localhost:1337";
+      const baseUrl =
+        strapi.config.get("server.url") || "http://localhost:1337";
 
       // Get the original HTML to extract CSS and JS URLs
       const originalHtml = await editor.render(
         contentId && contentId !== "new" ? contentId : undefined,
         "en",
-        user
+        user,
       );
 
       // Extract CSS and JS URLs from the original HTML
@@ -1236,48 +1395,56 @@ const service = ({ strapi }) => ({
       const jsMatches = originalHtml.match(/src="([^"]+\.js[^"]*)"/g) || [];
 
       const cssFiles = cssMatches
-        .map(m => m.match(/href="([^"]+)"/)?.[1])
+        .map((m) => m.match(/href="([^"]+)"/)?.[1])
         .filter(Boolean)
         .filter((v, i, a) => a.indexOf(v) === i);
 
       const jsFiles = jsMatches
-        .map(m => m.match(/src="([^"]+)"/)?.[1])
+        .map((m) => m.match(/src="([^"]+)"/)?.[1])
         .filter(Boolean)
         .filter((v, i, a) => a.indexOf(v) === i);
 
-      // Build H5PIntegration
+      const integrationContentId = contentId && contentId !== "new" ? contentId : void 0;
+      const generatedIntegration = editor.generateIntegration(
+        integrationContentId,
+        "en",
+        user,
+      );
+
+      // Build H5PIntegration with proper metadata semantics
       const h5pIntegration = {
+        ...generatedIntegration,
         baseUrl: baseUrl,
         url: baseUrl,
-        postUserStatistics: false,
         ajax: {
           setFinished: `${baseUrl}/api/h5p/ajax?action=setFinished`,
-          contentUserData: `${baseUrl}/api/h5p/ajax?action=contentUserData`
+          contentUserData: `${baseUrl}/api/h5p/ajax?action=contentUserData`,
         },
         ajaxPath: `${baseUrl}/api/h5p/ajax?action=`,
-        saveFreq: false,
-        l10n: { H5P: {} },
-        hubIsEnabled: true,
-        fullscreenDisabled: 0,
+        l10n: generatedIntegration.l10n || { H5P: {} },
         editor: {
+          ...generatedIntegration.editor,
           filesPath: `${baseUrl}/api/h5p/temp-files`,
-          fileIcon: { path: `${baseUrl}/api/h5p/editor/images/binary-file.png`, width: 50, height: 50 },
+          fileIcon: {
+            path: `${baseUrl}/api/h5p/editor/images/binary-file.png`,
+            width: 50,
+            height: 50,
+          },
           ajaxPath: `${baseUrl}/api/h5p/ajax?action=`,
           libraryUrl: `${baseUrl}/api/h5p/editor/`,
-          copyrightSemantics: {},
-          metadataSemantics: [],
           assets: { css: cssFiles, js: jsFiles },
-          apiVersion: { majorVersion: 1, minorVersion: 27 },
-          enableContentHub: false
         },
-        user: { name: "admin", id: "1" },
-        contents: {}
+        user: generatedIntegration.user || { name: "admin", id: "1" },
       };
 
-      const cssLinks = cssFiles.map(css => `<link rel="stylesheet" href="${css}">`).join('\n    ');
+      const cssLinks = cssFiles
+        .map((css) => `<link rel="stylesheet" href="${css}">`)
+        .join("\n    ");
 
       // Find the jQuery URL from jsFiles
-      const jqueryUrl = jsFiles.find(s => s.indexOf('jquery.js') !== -1) || '/api/h5p/core/js/jquery.js';
+      const jqueryUrl =
+        jsFiles.find((s) => s.indexOf("jquery.js") !== -1) ||
+        "/api/h5p/core/js/jquery.js";
 
       return `<!DOCTYPE html>
 <html lang="en">
@@ -1287,8 +1454,11 @@ const service = ({ strapi }) => ({
     <title>H5P Editor</title>
     ${cssLinks}
     <style>
-      body { margin: 0; padding: 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-      .h5p-editor-wrapper { width: 100%; max-width: 100%; }
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+      .h5p-editor-wrapper,
+      .h5p-create,
+      .h5p-editor { width: 100%; max-width: 100%; }
       /* Force H5P Hub to full width */
       .h5p-hub-client-container-using-mouse,
       .h5p-hub,
@@ -1468,10 +1638,10 @@ const service = ({ strapi }) => ({
       strapi.log.error(`Failed to read file ${filePath}:`, error);
       throw error;
     }
-  }
+  },
 });
 const services = {
-  service
+  service,
 };
 const index = {
   register,
@@ -1483,6 +1653,6 @@ const index = {
   services,
   contentTypes: {}, // Disabled - using content-type from src/api/h5p-content
   policies,
-  middlewares
+  middlewares,
 };
 module.exports = index;
