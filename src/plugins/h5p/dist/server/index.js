@@ -404,6 +404,26 @@ const h5pEditorController = ({ strapi }) => ({
           const contentTypes2 = await editor.getContentTypeCache(user);
           ctx.body = contentTypes2;
           break;
+        case "content-hub-metadata-cache":
+          // Return content hub metadata for filtering (levels, languages, licenses, disciplines)
+          try {
+            if (editor.contentHubService && typeof editor.contentHubService.getMetadata === 'function') {
+              const metadata = await editor.contentHubService.getMetadata();
+              ctx.body = metadata;
+            } else {
+              // Provide default metadata structure if service is not available
+              ctx.body = {
+                levels: [],
+                languages: [],
+                licenses: [],
+                disciplines: []
+              };
+            }
+          } catch (metadataError) {
+            strapi.log.warn("Could not fetch content hub metadata:", metadataError.message);
+            ctx.body = { levels: [], languages: [], licenses: [], disciplines: [] };
+          }
+          break;
         default:
           ctx.throw(400, `Unknown action: ${action}`);
       }
