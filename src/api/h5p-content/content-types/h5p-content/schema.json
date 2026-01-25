@@ -16,10 +16,14 @@
       "type": "string",
       "required": true
     },
+    "h5pContent": {
+      "type": "json",
+      "customField": "plugin::h5p.h5p-editor"
+    },
     "h5pFile": {
       "type": "media",
       "multiple": false,
-      "required": true,
+      "required": false,
       "allowedTypes": ["files"]
     }
   }
