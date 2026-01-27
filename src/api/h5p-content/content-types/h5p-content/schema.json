@@ -19,12 +19,6 @@
     "h5pContent": {
       "type": "json",
       "customField": "plugin::h5p.h5p-editor"
-    },
-    "h5pFile": {
-      "type": "media",
-      "multiple": false,
-      "required": false,
-      "allowedTypes": ["files"]
     }
   }
 }

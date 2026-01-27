@@ -529,10 +529,12 @@ const service = ({ strapi }: { strapi: any }) => {
     h5pConfig: H5PConfigState | null;
     h5pEditor: any | null;
     h5pPlayer: any | null;
+    currentRenderContentId: string | null;
   } = {
     h5pConfig: null,
     h5pEditor: null,
     h5pPlayer: null,
+    currentRenderContentId: null,
   };
 
   const getConfig = (): H5PConfigState => {
@@ -672,6 +674,7 @@ const service = ({ strapi }: { strapi: any }) => {
       renderEditorPage(model, {
         saveEndpoint: `${baseUrl}/save`,
         paramsEndpoint: `${baseUrl}/params`,
+        contentId: state.currentRenderContentId,
       }),
     );
     state.h5pPlayer = new h5pServer.H5PPlayer(
@@ -1102,8 +1105,14 @@ const service = ({ strapi }: { strapi: any }) => {
     try {
       const editorContentId = contentId === "new" ? null : contentId;
       const resolvedUser = resolveUser(user ?? undefined);
-      return await getEditor().render(editorContentId, "en", resolvedUser);
+      // Set the contentId in state so the renderer can access it
+      state.currentRenderContentId = editorContentId;
+      const result = await getEditor().render(editorContentId, "en", resolvedUser);
+      // Clear the contentId after rendering
+      state.currentRenderContentId = null;
+      return result;
     } catch (error) {
+      state.currentRenderContentId = null;
       strapi.log.error("Failed to render H5P editor:", error);
       throw error;
     }

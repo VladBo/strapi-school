@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Typography } from "@strapi/design-system";
+import { Box, Flex, Typography } from "@strapi/design-system";
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ForwardedRef, MutableRefObject } from "react";
 import { useIntl, type MessageDescriptor } from "react-intl";
@@ -33,6 +33,13 @@ interface H5PMessageData {
   error?: string;
 }
 
+// Global store for H5P save functions - used by form submission interceptor
+declare global {
+  interface Window {
+    __h5pSaveFunctions?: Map<string, () => Promise<void>>;
+  }
+}
+
 const H5PEditorField = forwardRef<HTMLDivElement, H5PEditorFieldProps>(
   (props, ref: ForwardedRef<HTMLDivElement>) => {
     const {
@@ -49,7 +56,6 @@ const H5PEditorField = forwardRef<HTMLDivElement, H5PEditorFieldProps>(
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
-    const [saveError, setSaveError] = useState<string | null>(null);
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const pendingSaveRef = useRef<{
@@ -92,17 +98,20 @@ const H5PEditorField = forwardRef<HTMLDivElement, H5PEditorFieldProps>(
       return new Promise<void>((resolve, reject) => {
         const iframeWindow = iframeRef.current?.contentWindow;
         if (!iframeWindow) {
-          reject(new Error("H5P iframe not available"));
+          // If iframe not ready, resolve immediately (no content to save)
+          resolve();
           return;
         }
         if (pendingSaveRef.current) {
-          reject(new Error("H5P save already in progress"));
-          return;
+          // Save already in progress, wait for it
+          pendingSaveRef.current.resolve();
+          pendingSaveRef.current = null;
         }
 
         const timeoutId = window.setTimeout(() => {
           pendingSaveRef.current = null;
-          reject(new Error("H5P save timed out"));
+          // On timeout, resolve anyway to allow form submission
+          resolve();
         }, 10000);
 
         pendingSaveRef.current = { resolve, reject, timeoutId };
@@ -110,21 +119,74 @@ const H5PEditorField = forwardRef<HTMLDivElement, H5PEditorFieldProps>(
       });
     }, []);
 
-    const handleSaveClick = useCallback(async () => {
-      setSaving(true);
-      setSaveStatus("idle");
-      setSaveError(null);
-      try {
-        await requestIframeSave();
-        setSaveStatus("saved");
-      } catch (err) {
-        setSaveStatus("error");
-        setSaveError(err instanceof Error ? err.message : "Save failed");
-        console.error("[H5P Editor] Save failed:", err);
-      } finally {
-        setSaving(false);
+    // Register save function globally so form can call it before submit
+    useEffect(() => {
+      if (!window.__h5pSaveFunctions) {
+        window.__h5pSaveFunctions = new Map();
       }
-    }, [requestIframeSave]);
+      window.__h5pSaveFunctions.set(name, async () => {
+        if (loading) return; // Don't save if still loading
+        setSaving(true);
+        setSaveStatus("idle");
+        try {
+          await requestIframeSave();
+          setSaveStatus("saved");
+        } catch (err) {
+          setSaveStatus("error");
+          console.error("[H5P Editor] Auto-save failed:", err);
+        } finally {
+          setSaving(false);
+        }
+      });
+      return () => {
+        window.__h5pSaveFunctions?.delete(name);
+      };
+    }, [name, requestIframeSave, loading]);
+
+    // Intercept form submission to save H5P content first
+    useEffect(() => {
+      const handleSubmit = async (event: Event) => {
+        // Check if this is a Strapi form submit (clicking Save button)
+        const target = event.target as HTMLElement;
+        if (!target) return;
+
+        // Find the submit button or form
+        const form = target.closest("form");
+        if (!form) return;
+
+        // Check if H5P save is needed
+        if (window.__h5pSaveFunctions && window.__h5pSaveFunctions.size > 0) {
+          // Prevent default form submission
+          event.preventDefault();
+          event.stopPropagation();
+
+          // Save all H5P fields
+          const savePromises = Array.from(window.__h5pSaveFunctions.values()).map((fn) => fn());
+          await Promise.all(savePromises);
+
+          // After saving, submit the form programmatically
+          // Use a small delay to ensure state updates are processed
+          setTimeout(() => {
+            const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+            if (submitBtn) {
+              // Temporarily remove our listener to avoid infinite loop
+              document.removeEventListener("submit", handleSubmit, true);
+              submitBtn.click();
+              // Re-add listener after a tick
+              setTimeout(() => {
+                document.addEventListener("submit", handleSubmit, true);
+              }, 100);
+            }
+          }, 100);
+        }
+      };
+
+      // Capture phase to intercept before form handles it
+      document.addEventListener("submit", handleSubmit, true);
+      return () => {
+        document.removeEventListener("submit", handleSubmit, true);
+      };
+    }, []);
 
     useEffect(() => {
       const handleMessage = (event: MessageEvent) => {
@@ -207,14 +269,19 @@ const H5PEditorField = forwardRef<HTMLDivElement, H5PEditorFieldProps>(
             </Typography>
           ) : null}
           <Flex gap={2} alignItems="center">
-            {saveStatus === "saved" ? (
+            {saving ? (
+              <Typography variant="pi" textColor="neutral600">
+                Saving H5P content...
+              </Typography>
+            ) : null}
+            {saveStatus === "saved" && !saving ? (
               <Typography variant="pi" textColor="success600">
                 ✓ H5P content saved
               </Typography>
             ) : null}
             {saveStatus === "error" ? (
               <Typography variant="pi" textColor="danger600">
-                ✗ {saveError || "Save failed"}
+                ✗ Save failed
               </Typography>
             ) : null}
             {hasContent ? (
@@ -222,15 +289,6 @@ const H5PEditorField = forwardRef<HTMLDivElement, H5PEditorFieldProps>(
                 Content ID: {currentContent.contentId}
               </Typography>
             ) : null}
-            <Button
-              variant="secondary"
-              size="S"
-              onClick={handleSaveClick}
-              disabled={saving || loading}
-              loading={saving}
-            >
-              {saving ? "Saving..." : "Save H5P Content"}
-            </Button>
           </Flex>
         </Flex>
         <Box

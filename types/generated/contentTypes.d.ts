@@ -711,7 +711,6 @@ export interface ApiH5PContentH5PContent extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     h5pContent: Schema.Attribute.JSON &
       Schema.Attribute.CustomField<'plugin::h5p.h5p-editor'>;
-    h5pFile: Schema.Attribute.Media<'files'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',

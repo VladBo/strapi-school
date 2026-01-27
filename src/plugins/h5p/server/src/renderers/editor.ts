@@ -3,7 +3,13 @@
 import { editorTemplate } from "./editor-template";
 
 export type EditorRenderModel = {
-  integration: unknown;
+  integration: {
+    editor?: {
+      nodeVersionId?: string | number;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
   scripts: string[];
   styles: string[];
   urlGenerator: {
@@ -14,13 +20,22 @@ export type EditorRenderModel = {
 export type EditorRendererOptions = {
   saveEndpoint: string;
   paramsEndpoint: string;
+  contentId?: string | null;
 };
 
 export const renderEditorPage = (
   model: EditorRenderModel,
   options: EditorRendererOptions,
 ): string => {
-  const integrationJson = JSON.stringify(model.integration, null, 2);
+  // Ensure nodeVersionId is set in the integration object for existing content
+  const integration = { ...model.integration };
+  if (options.contentId && integration.editor) {
+    integration.editor = {
+      ...integration.editor,
+      nodeVersionId: options.contentId,
+    };
+  }
+  const integrationJson = JSON.stringify(integration, null, 2);
   const orderedScripts = [...model.scripts];
   const editorScriptIndex = orderedScripts.findIndex((script) => script.includes('h5peditor.js'));
   const editorEditorScriptIndex = orderedScripts.findIndex((script) => script.includes('h5peditor-editor.js'));
