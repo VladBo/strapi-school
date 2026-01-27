@@ -847,8 +847,27 @@ const service = ({ strapi }: { strapi: any }) => {
    */
   async getContentParams(contentId: string): Promise<any> {
     try {
-      const params = await getEditor().contentStorage.get(contentId);
-      return params;
+      // Get content metadata (h5p.json) and parameters (content.json)
+      const contentStorage = getEditor().contentStorage;
+      const [metadata, parameters] = await Promise.all([
+        contentStorage.getMetadata(contentId),
+        contentStorage.getParameters(contentId),
+      ]);
+      // Return in the format expected by the H5P editor
+      return {
+        library: metadata.mainLibrary
+          ? `${metadata.mainLibrary} ${metadata.preloadedDependencies?.find(
+              (d: any) => d.machineName === metadata.mainLibrary
+            )?.majorVersion || 1}.${metadata.preloadedDependencies?.find(
+              (d: any) => d.machineName === metadata.mainLibrary
+            )?.minorVersion || 0}`
+          : undefined,
+        params: parameters,
+        metadata: {
+          title: metadata.title,
+          license: metadata.license,
+        },
+      };
     } catch (error) {
       strapi.log.error(`Failed to get content params for ${contentId}:`, error);
       throw error;
