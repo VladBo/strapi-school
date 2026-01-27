@@ -1031,6 +1031,9 @@ const service = ({ strapi }: { strapi: any }) => {
   },
   /**
    * Get content file
+   * h5p-standalone expects: content/content.json
+   * h5p-server stores: content.json (at root of content directory)
+   * This function handles the mapping
    */
   async getContentFile(
     contentId: string,
@@ -1038,10 +1041,18 @@ const service = ({ strapi }: { strapi: any }) => {
   ): Promise<{ stream: NodeJS.ReadableStream; mimeType: string }> {
     try {
       const h5pConfig = getConfig();
+      // Handle h5p-standalone's content/content.json -> content.json mapping
+      let resolvedFile = file;
+      if (file === "content/content.json") {
+        resolvedFile = "content.json";
+      } else if (file.startsWith("content/")) {
+        // For other files in content/ directory, strip the prefix
+        resolvedFile = file.replace(/^content\//, "");
+      }
       const filePath = path.join(
         h5pConfig.contentStorage.contentPath,
         contentId,
-        file,
+        resolvedFile,
       );
       if (!fs.existsSync(filePath)) {
         throw new Error(`File not found: ${filePath}`);
