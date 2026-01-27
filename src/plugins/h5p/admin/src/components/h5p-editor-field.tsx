@@ -1,6 +1,6 @@
-import { Box, Flex, Typography } from "@strapi/design-system";
-import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
-import type { ForwardedRef } from "react";
+import { Box, Button, Flex, Typography } from "@strapi/design-system";
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ForwardedRef, MutableRefObject } from "react";
 import { useIntl, type MessageDescriptor } from "react-intl";
 
 interface H5PContent {
@@ -30,6 +30,7 @@ interface H5PMessageData {
     library?: string;
     error?: string;
   };
+  error?: string;
 }
 
 const H5PEditorField = forwardRef<HTMLDivElement, H5PEditorFieldProps>(
@@ -46,7 +47,16 @@ const H5PEditorField = forwardRef<HTMLDivElement, H5PEditorFieldProps>(
     } = props;
     const { formatMessage } = useIntl();
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
+    const [saveError, setSaveError] = useState<string | null>(null);
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const pendingSaveRef = useRef<{
+      resolve: () => void;
+      reject: (error: Error) => void;
+      timeoutId: number;
+    } | null>(null);
 
     // Memoize the parsed content to avoid creating new object references on every render
     const currentContent = useMemo((): H5PContent => {
@@ -77,6 +87,44 @@ const H5PEditorField = forwardRef<HTMLDivElement, H5PEditorFieldProps>(
       attributeTypeRef.current = attribute.type;
       currentContentRef.current = currentContent;
     });
+
+    const requestIframeSave = useCallback(() => {
+      return new Promise<void>((resolve, reject) => {
+        const iframeWindow = iframeRef.current?.contentWindow;
+        if (!iframeWindow) {
+          reject(new Error("H5P iframe not available"));
+          return;
+        }
+        if (pendingSaveRef.current) {
+          reject(new Error("H5P save already in progress"));
+          return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+          pendingSaveRef.current = null;
+          reject(new Error("H5P save timed out"));
+        }, 10000);
+
+        pendingSaveRef.current = { resolve, reject, timeoutId };
+        iframeWindow.postMessage({ type: "h5p-save-content" }, window.location.origin);
+      });
+    }, []);
+
+    const handleSaveClick = useCallback(async () => {
+      setSaving(true);
+      setSaveStatus("idle");
+      setSaveError(null);
+      try {
+        await requestIframeSave();
+        setSaveStatus("saved");
+      } catch (err) {
+        setSaveStatus("error");
+        setSaveError(err instanceof Error ? err.message : "Save failed");
+        console.error("[H5P Editor] Save failed:", err);
+      } finally {
+        setSaving(false);
+      }
+    }, [requestIframeSave]);
 
     useEffect(() => {
       const handleMessage = (event: MessageEvent) => {
@@ -109,9 +157,21 @@ const H5PEditorField = forwardRef<HTMLDivElement, H5PEditorFieldProps>(
                 },
               });
             }
+            if (pendingSaveRef.current) {
+              window.clearTimeout(pendingSaveRef.current.timeoutId);
+              pendingSaveRef.current.resolve();
+              pendingSaveRef.current = null;
+            }
             break;
           case "h5p-editor-error":
-            console.error("[H5P Editor] Error:", data?.error);
+            console.error("[H5P Editor] Error:", data?.error || messageData.error);
+            if (pendingSaveRef.current) {
+              window.clearTimeout(pendingSaveRef.current.timeoutId);
+              pendingSaveRef.current.reject(
+                new Error(data?.error || messageData.error || "Save failed"),
+              );
+              pendingSaveRef.current = null;
+            }
             break;
         }
       };
@@ -122,19 +182,57 @@ const H5PEditorField = forwardRef<HTMLDivElement, H5PEditorFieldProps>(
       };
     }, []);
 
+    // Determine if H5P content has been saved (has a contentId)
+    const hasContent = Boolean(currentContent.contentId);
+
     return (
       <Flex
-        ref={ref}
+        ref={(node: HTMLDivElement | null) => {
+          containerRef.current = node;
+          if (typeof ref === "function") {
+            ref(node);
+          } else if (ref) {
+            (ref as MutableRefObject<HTMLDivElement | null>).current = node;
+          }
+        }}
         direction="column"
         gap={2}
         style={{ width: "100%", maxWidth: "100%" }}
       >
-        {intlLabel ? (
-          <Typography variant="pi" fontWeight="bold">
-            {formatMessage(intlLabel)}
-            {required ? <Typography textColor="danger600">*</Typography> : null}
-          </Typography>
-        ) : null}
+        <Flex justifyContent="space-between" alignItems="center">
+          {intlLabel ? (
+            <Typography variant="pi" fontWeight="bold">
+              {formatMessage(intlLabel)}
+              {required ? <Typography textColor="danger600">*</Typography> : null}
+            </Typography>
+          ) : null}
+          <Flex gap={2} alignItems="center">
+            {saveStatus === "saved" ? (
+              <Typography variant="pi" textColor="success600">
+                ✓ H5P content saved
+              </Typography>
+            ) : null}
+            {saveStatus === "error" ? (
+              <Typography variant="pi" textColor="danger600">
+                ✗ {saveError || "Save failed"}
+              </Typography>
+            ) : null}
+            {hasContent ? (
+              <Typography variant="pi" textColor="neutral600">
+                Content ID: {currentContent.contentId}
+              </Typography>
+            ) : null}
+            <Button
+              variant="secondary"
+              size="S"
+              onClick={handleSaveClick}
+              disabled={saving || loading}
+              loading={saving}
+            >
+              {saving ? "Saving..." : "Save H5P Content"}
+            </Button>
+          </Flex>
+        </Flex>
         <Box
           padding={0}
           background="neutral0"
