@@ -1,9 +1,7 @@
 import path from "node:path";
 import fs from "fs-extra";
 import type { Context } from "koa";
-import type { EditorRenderModel } from "./renderers/editor";
 import * as h5pServer from "@lumieducation/h5p-server";
-import { renderEditorPage } from "./renderers/editor";
 type StrapiContext = Context & {
   request: Context["request"] & {
     body?: any;
@@ -206,21 +204,7 @@ const controller = ({ strapi }: { strapi: any }) => ({
       ctx.throw(500, getErrorMessage(err));
     }
   },
-  // Editor methods
-  async getEditorPage(ctx: StrapiContext) {
-    try {
-      const h5pService = strapi.plugin("h5p").service("service");
-      const html = await h5pService.renderEditor(
-        ctx.params.contentId,
-        ctx.state?.user,
-      );
-      ctx.type = "text/html";
-      ctx.body = html;
-    } catch (err) {
-      ctx.throw(500, getErrorMessage(err));
-    }
-  },
-  // New API endpoints for H5PEditorUI React component
+  // API endpoints for H5PEditorUI React component
   async getEditorModel(ctx: StrapiContext) {
     try {
       const h5pService = strapi.plugin("h5p").service("service");
@@ -437,14 +421,6 @@ const routes = {
       },
       {
         method: "GET",
-        path: "/editor-page/:contentId",
-        handler: "controller.getEditorPage",
-        config: {
-          auth: false,
-        },
-      },
-      {
-        method: "GET",
         path: "/params/:contentId",
         handler: "controller.getContentParams",
         config: {
@@ -550,12 +526,10 @@ const service = ({ strapi }: { strapi: any }) => {
     h5pConfig: H5PConfigState | null;
     h5pEditor: any | null;
     h5pPlayer: any | null;
-    currentRenderContentId: string | null;
   } = {
     h5pConfig: null,
     h5pEditor: null,
     h5pPlayer: null,
-    currentRenderContentId: null,
   };
 
   const getConfig = (): H5PConfigState => {
@@ -690,13 +664,6 @@ const service = ({ strapi }: { strapi: any }) => {
       libraryStorage,
       contentStorage,
       temporaryStorage,
-    );
-    state.h5pEditor.setRenderer((model: EditorRenderModel) =>
-      renderEditorPage(model, {
-        saveEndpoint: `${baseUrl}/save`,
-        paramsEndpoint: `${baseUrl}/params`,
-        contentId: state.currentRenderContentId,
-      }),
     );
     state.h5pPlayer = new h5pServer.H5PPlayer(
       libraryStorage,
@@ -1135,25 +1102,6 @@ const service = ({ strapi }: { strapi: any }) => {
       return await getPlayer().render(contentId);
     } catch (error) {
       strapi.log.error(`Failed to render H5P player for ${contentId}:`, error);
-      throw error;
-    }
-  },
-  /**
-   * Render H5P editor
-   */
-  async renderEditor(contentId: string, user?: H5PUser | null): Promise<any> {
-    try {
-      const editorContentId = contentId === "new" ? null : contentId;
-      const resolvedUser = resolveUser(user ?? undefined);
-      // Set the contentId in state so the renderer can access it
-      state.currentRenderContentId = editorContentId;
-      const result = await getEditor().render(editorContentId, "en", resolvedUser);
-      // Clear the contentId after rendering
-      state.currentRenderContentId = null;
-      return result;
-    } catch (error) {
-      state.currentRenderContentId = null;
-      strapi.log.error("Failed to render H5P editor:", error);
       throw error;
     }
   },
