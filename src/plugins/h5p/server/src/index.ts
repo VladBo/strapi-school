@@ -1,10 +1,7 @@
 import path from "node:path";
 import fs from "fs-extra";
-import "node:https";
-import "node:http";
 import type { Context } from "koa";
 import type { EditorRenderModel } from "./renderers/editor";
-import AdmZip from "adm-zip";
 import * as h5pServer from "@lumieducation/h5p-server";
 import { renderEditorPage } from "./renderers/editor";
 type StrapiContext = Context & {
@@ -219,6 +216,21 @@ const controller = ({ strapi }: { strapi: any }) => ({
       );
       ctx.type = "text/html";
       ctx.body = html;
+    } catch (err) {
+      ctx.throw(500, getErrorMessage(err));
+    }
+  },
+  // New API endpoints for H5PEditorUI React component
+  async getEditorModel(ctx: StrapiContext) {
+    try {
+      const h5pService = strapi.plugin("h5p").service("service");
+      const contentId = ctx.params.contentId === 'new' ? null : ctx.params.contentId;
+      const resolvedUser = ctx.state?.user;
+      
+      // Get IEditorModel directly from H5P server
+      const editorModel = await h5pService.getEditorModel(contentId, resolvedUser);
+      
+      ctx.body = editorModel;
     } catch (err) {
       ctx.throw(500, getErrorMessage(err));
     }
@@ -459,6 +471,15 @@ const routes = {
         method: "GET",
         path: "/content/:contentId/:file*",
         handler: "controller.getContentFile",
+        config: {
+          auth: false,
+        },
+      },
+      // New routes for H5PEditorUI React component (must be before wildcard routes)
+      {
+        method: "GET",
+        path: "/editor-model/:contentId",
+        handler: "controller.getEditorModel",
         config: {
           auth: false,
         },
@@ -907,17 +928,6 @@ const service = ({ strapi }: { strapi: any }) => {
         }
       }
 
-      const parseJson = (value: any) => {
-        if (typeof value !== "string") {
-          return value;
-        }
-        try {
-          return JSON.parse(value);
-        } catch {
-          return value;
-        }
-      };
-
       const buildLibrary = (input?: {
         machineName?: string;
         majorVersion?: number;
@@ -939,7 +949,7 @@ const service = ({ strapi }: { strapi: any }) => {
         if (mainLibraryFromObject) return mainLibraryFromObject;
         if (typeof payload?.ubername === "string") return payload.ubername;
         if (typeof payload?.libraryName === "string") return payload.libraryName;
-        const params = parseJson(payload?.params);
+        const params = safeJsonParse(payload?.params);
         if (params && typeof params.library === "string") return params.library;
         if (params && typeof params.mainLibrary === "string") return params.mainLibrary;
         if (params?.params && typeof params.params.library === "string") {
@@ -951,8 +961,8 @@ const service = ({ strapi }: { strapi: any }) => {
         return undefined;
       };
 
-      const parsedParams = parseJson(payload?.params);
-      const parsedMetadata = parseJson(payload?.metadata);
+      const parsedParams = safeJsonParse(payload?.params);
+      const parsedMetadata = safeJsonParse(payload?.metadata);
       const paramsContainer = parsedParams?.params ? parsedParams : undefined;
 
       const normalizeLibrary = (value?: string) => {
@@ -1148,6 +1158,30 @@ const service = ({ strapi }: { strapi: any }) => {
     }
   },
   /**
+   * Get editor model (IEditorModel) for React component
+   * This returns the raw editor model without HTML wrapping
+   */
+  async getEditorModel(contentId: string | null, user?: H5PUser | null): Promise<any> {
+    try {
+      const resolvedUser = resolveUser(user ?? undefined);
+      
+      // Temporarily save the current renderer
+      const originalRenderer = getEditor().setRenderer((model) => model);
+      
+      try {
+        // Call render() which will now return the model directly
+        const editorModel = await getEditor().render(contentId, "en", resolvedUser);
+        return editorModel;
+      } finally {
+        // Restore the original renderer
+        getEditor().setRenderer(originalRenderer);
+      }
+    } catch (error) {
+      strapi.log.error("Failed to get editor model:", error);
+      throw error;
+    }
+  },
+  /**
    * Read file from filesystem
    */
   async readFile(filePath: string): Promise<Buffer> {
@@ -1155,92 +1189,6 @@ const service = ({ strapi }: { strapi: any }) => {
       return await fs.readFile(filePath);
     } catch (error) {
       strapi.log.error(`Failed to read file ${filePath}:`, error);
-      throw error;
-    }
-  },
-  /**
-   * Download and install libraries from H5P Hub
-   */
-  async downloadLibraries(): Promise<{ success: true; count: number }> {
-    try {
-      strapi.log.info("Downloading H5P libraries...");
-      // Define essential libraries to download
-      const essentialLibraries = new Set([
-        "H5P.MultiChoice",
-        "H5P.QuestionSet",
-        "H5P.InteractiveVideo",
-        "H5P.CoursePresentation",
-        "H5P.DragQuestion",
-        "H5P.Blanks",
-        "H5P.TrueFalse",
-      ]);
-      // Get available libraries
-      const availableLibraries = await getEditor().contentHub.getLibraries();
-      // Filter for essential libraries
-      const librariesToDownload = availableLibraries.filter(
-        (lib: { machineName: string; id: string }) =>
-          essentialLibraries.has(lib.machineName),
-      );
-      strapi.log.info(
-        `Found ${librariesToDownload.length} essential libraries to download`,
-      );
-      // Download and install each library
-      for (const lib of librariesToDownload) {
-        try {
-          strapi.log.info(`Downloading ${lib.machineName}...`);
-          await getEditor().contentHub.installLibrary(lib.id);
-          strapi.log.info(`✅ Installed ${lib.machineName}`);
-        } catch (error) {
-          strapi.log.error(`Failed to install ${lib.machineName}:`, error);
-        }
-      }
-      strapi.log.info("✅ H5P libraries download completed");
-      return { success: true, count: librariesToDownload.length };
-    } catch (error) {
-      strapi.log.error("Failed to download H5P libraries:", error);
-      throw error;
-    }
-  },
-  /**
-   * Install H5P libraries from a ZIP file
-   */
-  async installFromZip(zipFilePath: string): Promise<{ success: true; result: any }> {
-    try {
-      strapi.log.info(`Installing H5P libraries from ${zipFilePath}...`);
-      if (!fs.existsSync(zipFilePath)) {
-        throw new Error(`ZIP file not found: ${zipFilePath}`);
-      }
-      // Read ZIP file
-      const zip = new AdmZip(zipFilePath);
-      const zipEntries = zip.getEntries();
-      // Extract to temporary directory
-      const tempDir = path.join(
-        getConfig().contentStorage.temporaryPath,
-        `h5p-lib-${Date.now()}`,
-      );
-      await fs.ensureDir(tempDir);
-      zip.extractAllTo(tempDir, true);
-      // Check if it's a library or content
-      const isLibrary = zipEntries.some((entry) =>
-        entry.entryName.endsWith("library.json"),
-      );
-      if (isLibrary) {
-        // Install library
-        const result = await getEditor().libraryStorage.addLibraryFromDirectory(
-          tempDir,
-        );
-        strapi.log.info("✅ Library installed successfully");
-        return { success: true, result };
-      } else {
-        // Install content
-        const result = await getEditor().contentStorage.addContentFromDirectory(
-          tempDir,
-        );
-        strapi.log.info("✅ Content installed successfully");
-        return { success: true, result };
-      }
-    } catch (error) {
-      strapi.log.error("Failed to install from ZIP:", error);
       throw error;
     }
   },
