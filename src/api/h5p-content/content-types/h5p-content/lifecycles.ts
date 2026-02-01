@@ -40,7 +40,8 @@ async function processH5PContent(event: LifecycleEvent) {
   if (typeof data.h5pContent === "string") {
     try {
       h5pContent = JSON.parse(data.h5pContent);
-    } catch {
+    } catch (error) {
+      strapi.log.error("[H5P Lifecycle] Failed to parse h5pContent JSON:", error);
       return;
     }
   } else {

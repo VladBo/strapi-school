@@ -20,3 +20,31 @@ export interface StrapiApp {
 export interface RegisterTradsParams {
   locales: string[];
 }
+
+export interface H5PContent {
+  contentId?: string;
+  library?: string;
+  params?: Record<string, unknown>;
+  metadata?: {
+    title?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export interface H5PEditorFieldProps {
+  attribute: {
+    type: string;
+    customField?: string;
+    [key: string]: unknown;
+  };
+  intlLabel?: { id: string; defaultMessage: string };
+  label?: string;
+  name: string;
+  required?: boolean;
+  description?: { id: string; defaultMessage: string };
+  hint?: string;
+  disabled?: boolean;
+  contentTypeUID?: string;
+  labelAction?: React.ReactNode;
+}

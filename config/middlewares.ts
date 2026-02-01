@@ -23,5 +23,5 @@ export default [
   'strapi::session',
   'strapi::favicon',
   'strapi::public',
-  'global::h5p-static',
+  'plugin::h5p.h5p-static',
 ];
