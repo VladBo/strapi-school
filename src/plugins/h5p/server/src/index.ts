@@ -1,7 +1,7 @@
-import h5pStaticMiddleware from "./middlewares/h5p-static";
-import controller from "./controllers/h5p";
+import controllers from "./controllers";
 import routes from "./routes";
-import service from "./services/h5p";
+import services from "./services";
+import middlewares from "./middlewares";
 import bootstrap from "./bootstrap";
 import register from "./register";
 
@@ -10,13 +10,6 @@ const config = {
   validator() {},
 };
 
-const policies = {};
-const middlewares = {
-  "h5p-static": h5pStaticMiddleware,
-};
-const services = { service };
-const controllers = { controller };
-
 const index = {
   register,
   bootstrap,
@@ -24,8 +17,6 @@ const index = {
   controllers,
   routes,
   services,
-  contentTypes: {},
-  policies,
   middlewares,
 };
 export default index;

@@ -110,7 +110,7 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
     async getInstalledLibraries(): Promise<any> {
       try {
         const libraries =
-          await getEditor().libraryStorage.getInstalledLibraries();
+          await getEditor().libraryManager.listInstalledLibraries();
         return libraries;
       } catch (error) {
         strapi.log.error("Failed to get installed libraries:", error);

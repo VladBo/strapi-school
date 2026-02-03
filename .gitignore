@@ -129,3 +129,15 @@ dist
 build
 .strapi-updater.json
 .strapi-cloud.json
+
+############################
+# H5P
+############################
+
+# User-generated H5P content (should not be in git)
+public/h5p/content/*
+!public/h5p/content/.gitkeep
+
+# Temporary files
+public/h5p/temp-files/*
+!public/h5p/temp-files/.gitkeep
