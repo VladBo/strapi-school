@@ -109,6 +109,8 @@ H5P metadata and `content.json` remain ordinary JSON objects in R2. Library meta
 
 The existing Strapi H5P routes remain the compatibility layer during the first deployment. Direct CDN URLs can be introduced only after playback, authorization, CORS, MIME type, and range behavior are verified. This prevents the storage migration from silently changing the public API contract.
 
+Public routes expose only the files and parameters required for playback. Editor models, AJAX uploads, saves, library installation, cache mutation, and H5P CRUD move to Strapi admin routes guarded by `admin::isAuthenticatedAdmin`; the admin H5P config uses the authenticated plugin base URL while the player keeps `/api/h5p`.
+
 ## Media Library
 
 Use Strapi's S3-compatible upload provider pinned to the same Strapi version, configured for the R2 endpoint, private credentials, `media/` root path, and a stable public asset base URL. Existing uploaded files are copied to `media/`, and stored URLs are reconciled to the custom asset domain before production cutover.
