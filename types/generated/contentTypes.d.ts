@@ -518,14 +518,21 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     description: Schema.Attribute.Text;
+    legacyData: Schema.Attribute.JSON;
+    legacyNid: Schema.Attribute.Integer & Schema.Attribute.Unique;
+    legacyPath: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::article.article'
     > &
       Schema.Attribute.Private;
+    migrationHash: Schema.Attribute.String & Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
     slug: Schema.Attribute.UID<'title'>;
+    sourceCreatedAt: Schema.Attribute.DateTime;
+    sourceLocale: Schema.Attribute.String & Schema.Attribute.DefaultTo<'uk'>;
+    sourceUpdatedAt: Schema.Attribute.DateTime;
     tags: Schema.Attribute.Relation<'manyToMany', 'api::category.category'>;
     title: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
@@ -677,6 +684,9 @@ export interface ApiGlobalGlobal extends Struct.SingleTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    defaultLocale: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'uk'>;
     defaultSeo: Schema.Attribute.Component<'shared.seo', false>;
     favicon: Schema.Attribute.Media<'images' | 'files' | 'videos'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -711,13 +721,25 @@ export interface ApiH5PContentH5PContent extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     h5pContent: Schema.Attribute.JSON &
       Schema.Attribute.CustomField<'plugin::h5p.h5p-editor'>;
+    legacyNid: Schema.Attribute.Integer & Schema.Attribute.Unique;
+    legacyPath: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::h5p-content.h5p-content'
     > &
       Schema.Attribute.Private;
+    migrationHash: Schema.Attribute.String & Schema.Attribute.Private;
+    migrationStatus: Schema.Attribute.Enumeration<
+      ['package-ready', 'imported', 'blocked']
+    > &
+      Schema.Attribute.DefaultTo<'package-ready'>;
+    packageFilename: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    sourceLibrary: Schema.Attribute.String;
+    sourceLocale: Schema.Attribute.String & Schema.Attribute.DefaultTo<'uk'>;
+    sourcePublished: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -788,6 +810,56 @@ export interface ApiHomepageHomepage extends Struct.SingleTypeSchema {
     > &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiPagePage extends Struct.CollectionTypeSchema {
+  collectionName: 'pages';
+  info: {
+    description: 'General pages and preserved Drupal content';
+    displayName: 'Page';
+    pluralName: 'pages';
+    singularName: 'page';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    blocks: Schema.Attribute.DynamicZone<
+      ['shared.media', 'shared.quote', 'shared.rich-text', 'shared.slider']
+    >;
+    cover: Schema.Attribute.Media<'images' | 'files' | 'videos'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    legacyData: Schema.Attribute.JSON;
+    legacyNid: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    legacyPath: Schema.Attribute.String;
+    link: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::page.page'> &
+      Schema.Attribute.Private;
+    mapEmbedUrl: Schema.Attribute.String;
+    mapLinkUrl: Schema.Attribute.String;
+    migrationHash: Schema.Attribute.String & Schema.Attribute.Private;
+    pageType: Schema.Attribute.Enumeration<
+      ['standard', 'slide', 'contact', 'form']
+    > &
+      Schema.Attribute.DefaultTo<'standard'>;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'title'> &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    sourceCreatedAt: Schema.Attribute.DateTime;
+    sourceLocale: Schema.Attribute.String & Schema.Attribute.DefaultTo<'uk'>;
+    sourceUpdatedAt: Schema.Attribute.DateTime;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1380,6 +1452,7 @@ declare module '@strapi/strapi' {
       'api::h5p-content.h5p-content': ApiH5PContentH5PContent;
       'api::header-menu.header-menu': ApiHeaderMenuHeaderMenu;
       'api::homepage.homepage': ApiHomepageHomepage;
+      'api::page.page': ApiPagePage;
       'api::tag.tag': ApiTagTag;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

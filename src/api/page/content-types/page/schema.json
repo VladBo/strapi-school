@@ -1,0 +1,91 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pages",
+  "info": {
+    "singularName": "page",
+    "pluralName": "pages",
+    "displayName": "Page",
+    "description": "General pages and preserved Drupal content"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true,
+      "unique": true
+    },
+    "pageType": {
+      "type": "enumeration",
+      "enum": [
+        "standard",
+        "slide",
+        "contact",
+        "form"
+      ],
+      "default": "standard"
+    },
+    "cover": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos"
+      ]
+    },
+    "link": {
+      "type": "string"
+    },
+    "mapEmbedUrl": {
+      "type": "string"
+    },
+    "mapLinkUrl": {
+      "type": "string"
+    },
+    "blocks": {
+      "type": "dynamiczone",
+      "components": [
+        "shared.media",
+        "shared.quote",
+        "shared.rich-text",
+        "shared.slider"
+      ]
+    },
+    "legacyNid": {
+      "type": "integer",
+      "required": true,
+      "unique": true
+    },
+    "legacyPath": {
+      "type": "string"
+    },
+    "sourceLocale": {
+      "type": "string",
+      "default": "uk"
+    },
+    "sourceCreatedAt": {
+      "type": "datetime"
+    },
+    "sourceUpdatedAt": {
+      "type": "datetime"
+    },
+    "legacyData": {
+      "type": "json"
+    },
+    "migrationHash": {
+      "type": "string",
+      "private": true
+    }
+  }
+}
