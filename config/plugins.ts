@@ -13,6 +13,10 @@ export default () => ({
       contentPath: "h5p/content",
       // H5P temporary files path
       temporaryFilesPath: "h5p/temp-files",
+      // Highest legacy package expands to about 69 MiB.
+      maxTotalSize: 96 * 1024 * 1024,
+      // Legacy packages contain individual videos up to about 42 MiB.
+      maxFileSize: 64 * 1024 * 1024,
       // Enable H5P Hub for downloading content types
       enableHubLocalization: true,
       enableLrsContentTypes: false,

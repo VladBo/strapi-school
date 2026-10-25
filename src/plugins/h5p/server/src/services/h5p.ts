@@ -12,6 +12,11 @@ import {
   getMainLibraryVersion,
 } from "../utils";
 import { Core } from "@strapi/strapi";
+import {
+  importPackageWithEditor,
+  resolveMaxFileSize,
+  resolveMaxTotalSize,
+} from "./h5p-import.mjs";
 
 const service = ({ strapi }: { strapi: Core.Strapi }) => {
   const state: {
@@ -54,6 +59,8 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
       const h5pConfig = new h5pServer.H5PConfig(void 0, {
         baseUrl,
         contentHubEnabled: true,
+        maxFileSize: resolveMaxFileSize(pluginConfig.maxFileSize),
+        maxTotalSize: resolveMaxTotalSize(pluginConfig.maxTotalSize),
       });
       const libraryPath = path.join(
         strapi.dirs.static.public,
@@ -388,6 +395,27 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
         return { id: contentId };
       } catch (error) {
         strapi.log.error("Failed to save content:", error);
+        throw error;
+      }
+    },
+    async importPackage(
+      packagePath: string,
+      user?: H5PUser | null,
+    ): Promise<{
+      id: any;
+      installedLibraries: any[];
+      library: string;
+      metadata: any;
+      parameters: any;
+    }> {
+      try {
+        return await importPackageWithEditor(
+          getEditor(),
+          packagePath,
+          resolveUser(user ?? undefined),
+        );
+      } catch (error) {
+        strapi.log.error(`Failed to import H5P package ${packagePath}:`, error);
         throw error;
       }
     },
