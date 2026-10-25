@@ -21,6 +21,7 @@ test('normalizes safe object-key parts and rejects keys that can escape their pr
   for (const unsafe of ['/absolute', '../escape', 'a\\b', '']) {
     assert.throws(() => normalizeObjectKey(unsafe), /object key/i);
   }
+  assert.throws(() => normalizeObjectKey('safe-prefix', '/absolute'), /object key/i);
 });
 
 test('lists every page while keeping keys relative to the configured prefix', async () => {

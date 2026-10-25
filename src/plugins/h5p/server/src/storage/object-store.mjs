@@ -16,6 +16,9 @@ export function normalizeObjectKey(...parts) {
       if (typeof part !== 'string' || part.length === 0) {
         throw new TypeError('Object key parts must be non-empty strings');
       }
+      if (part.startsWith('/') || part.includes('\\') || part.includes('..')) {
+        throw new TypeError(`Unsafe object key part: ${part}`);
+      }
       return part;
     })
     .join('/');
