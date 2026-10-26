@@ -1,6 +1,6 @@
 import type { Core } from "@strapi/strapi";
 
-import { runStorageHealthCheck } from "../services/health-check.mjs";
+import { runStorageHealthCheck } from "../services/health-check";
 
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async storage(ctx) {

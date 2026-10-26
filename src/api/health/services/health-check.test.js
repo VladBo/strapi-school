@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 async function loadHealthCheck() {
-  return import('./health-check.mjs');
+  return import('./health-check.ts');
 }
 
 test('passes only after both database and object storage reads succeed', async () => {
