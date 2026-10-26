@@ -1,11 +1,21 @@
 import { Box, Field, Flex } from "@strapi/design-system";
-import { useField } from "@strapi/strapi/admin";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useFetchClient, useField } from "@strapi/strapi/admin";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { useIntl } from "react-intl";
 import { H5PEditorUI } from "@lumieducation/h5p-react";
 import type { IEditorModel, IContentMetadata } from "@lumieducation/h5p-server";
 import type { H5PEditorFieldProps, H5PContent } from "../types";
 import { parseH5PContent } from "../utils/h5p-content";
+import {
+  installH5PAdminXhrAuth,
+  readStoredAdminToken,
+} from "../utils/h5p-admin-auth.mjs";
 
 /**
  * Hook that intercepts Strapi's Save button to trigger H5P save first.
@@ -63,6 +73,7 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
     labelAction,
   } = props;
   const { formatMessage } = useIntl();
+  const { get } = useFetchClient();
   const editorRef = useRef<H5PEditorUI>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isSavingRef = useRef(false);
@@ -75,6 +86,15 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
   const fieldValueRef = useRef(value);
   onChangeRef.current = onChange;
   fieldValueRef.current = value;
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    return installH5PAdminXhrAuth({
+      XMLHttpRequestClass: window.XMLHttpRequest,
+      getToken: () => readStoredAdminToken(window.localStorage),
+      origin: window.location.origin,
+    });
+  }, []);
 
   // Parse the initial content on first render only.
   const initialContentRef = useRef<H5PContent | null>(null);
@@ -98,25 +118,31 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
     }> => {
       const content = initialContentRef.current || {};
 
-      const response = await fetch("/api/h5p/editor-model/new");
-      if (!response.ok) throw new Error(`Failed to load editor: ${response.status}`);
-      const editorModel = await response.json();
+      const { data } = await get("/h5p/editor-model/new");
+      const editorModel = data as IEditorModel & {
+        library?: string;
+        metadata?: IContentMetadata;
+        params?: Record<string, unknown>;
+      };
 
       if (content.library && content.params) {
         editorModel.library = content.library;
         const params = content.params as Record<string, unknown>;
         if (params.params) {
-          editorModel.params = params.params;
-          editorModel.metadata = params.metadata || content.metadata || {};
+          editorModel.params = params.params as Record<string, unknown>;
+          editorModel.metadata = (params.metadata ||
+            content.metadata ||
+            {}) as IContentMetadata;
         } else {
           editorModel.params = content.params;
-          editorModel.metadata = content.metadata || {};
+          editorModel.metadata = (content.metadata ||
+            {}) as unknown as IContentMetadata;
         }
       }
 
       return editorModel;
     },
-    []
+    [get]
   );
 
   const saveContentCallback = useCallback(

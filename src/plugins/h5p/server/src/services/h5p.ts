@@ -24,6 +24,8 @@ import {
 } from "./h5p-import.mjs";
 import { createH5PStorages } from "../storage/h5p-storage-factory.mjs";
 import { createH5PFileResponse } from "./h5p-file-response.mjs";
+import { renderH5PPlayer } from "./h5p-player.mjs";
+import { createEditorUrlGenerator } from "./h5p-url-generator.mjs";
 
 const service = ({ strapi }: { strapi: Core.Strapi }) => {
   const state: {
@@ -66,14 +68,29 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
   return {
     async initialize(): Promise<void> {
       strapi.log.info("Initializing H5P Editor and Player...");
-      const config2 = strapi.config.get("plugin.h5p") || {};
+      const config2 = (strapi.config.get("plugin.h5p") || {}) as {
+        config?: Record<string, any>;
+      };
       const pluginConfig = config2.config || {};
-      const baseUrl = "/api/h5p";
-      const h5pConfig = new h5pServer.H5PConfig(void 0, {
-        baseUrl,
+      const adminBaseUrl = "/h5p";
+      const publicBaseUrl = "/api/h5p";
+      const commonConfig = {
         contentHubEnabled: true,
         maxFileSize: resolveMaxFileSize(pluginConfig.maxFileSize),
         maxTotalSize: resolveMaxTotalSize(pluginConfig.maxTotalSize),
+      };
+      const editorConfig = new h5pServer.H5PConfig(void 0, {
+        ...commonConfig,
+        baseUrl: adminBaseUrl,
+      });
+      const playerConfig = new h5pServer.H5PConfig(void 0, {
+        ...commonConfig,
+        baseUrl: publicBaseUrl,
+      });
+      const editorUrlGenerator = createEditorUrlGenerator({
+        UrlGenerator: h5pServer.UrlGenerator,
+        adminConfig: editorConfig,
+        publicConfig: playerConfig,
       });
       const libraryPath = path.join(
         strapi.dirs.static.public,
@@ -88,11 +105,11 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
         pluginConfig.temporaryFilesPath || "h5p/temp-files",
       );
       state.h5pConfig = {
-        baseUrl,
-        editorUrl: `${baseUrl}${h5pConfig.editorLibraryUrl}`,
-        coreUrl: `${baseUrl}${h5pConfig.coreUrl}`,
-        contentTypeCacheUrl: `${baseUrl}/ajax?action=content-type-cache`,
-        contentHubMetadataUrl: `${baseUrl}/ajax?action=content-hub-metadata-cache`,
+        baseUrl: adminBaseUrl,
+        editorUrl: `${adminBaseUrl}${editorConfig.editorLibraryUrl}`,
+        coreUrl: `${adminBaseUrl}${editorConfig.coreUrl}`,
+        contentTypeCacheUrl: `${adminBaseUrl}/ajax?action=content-type-cache`,
+        contentHubMetadataUrl: `${adminBaseUrl}/ajax?action=content-hub-metadata-cache`,
         contentStorage: {
           libraryPath,
           contentPath,
@@ -125,15 +142,17 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
       state.objectStore = objectStore;
       state.h5pEditor = new h5pServer.H5PEditor(
         cache,
-        h5pConfig,
+        editorConfig,
         libraryStorage,
         contentStorage,
         temporaryStorage,
+        undefined,
+        editorUrlGenerator,
       );
       state.h5pPlayer = new h5pServer.H5PPlayer(
         libraryStorage,
         contentStorage,
-        h5pConfig,
+        playerConfig,
       );
       strapi.log.info("H5P Editor and Player initialized successfully");
     },
@@ -537,9 +556,16 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
         throw error;
       }
     },
-    async renderPlayer(contentId: string): Promise<any> {
+    async renderPlayer(
+      contentId: string,
+      user?: H5PUser | null,
+    ): Promise<any> {
       try {
-        return await getPlayer().render(contentId);
+        return await renderH5PPlayer({
+          player: getPlayer(),
+          contentId,
+          user: resolveUser(user ?? undefined),
+        });
       } catch (error) {
         strapi.log.error(
           `Failed to render H5P player for ${contentId}:`,

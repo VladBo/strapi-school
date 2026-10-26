@@ -5,6 +5,7 @@ import {
   applyH5PFileResponse,
   applyRangeErrorResponse,
 } from "../services/h5p-file-response.mjs";
+import { assertPublicAjaxAction } from "../services/public-h5p-access.mjs";
 
 const throwFileError = (ctx: StrapiContext, err: unknown) => {
   if (applyRangeErrorResponse(ctx, err)) return;
@@ -249,7 +250,10 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
   async getPlayPage(ctx: StrapiContext) {
     try {
       const h5pService = strapi.plugin("h5p").service("service");
-      const html = await h5pService.renderPlayer(ctx.params.contentId);
+      const html = await h5pService.renderPlayer(
+        ctx.params.contentId,
+        ctx.state?.user,
+      );
       ctx.type = "text/html";
       ctx.body = html;
     } catch (err) {
@@ -284,6 +288,32 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
       }
     } catch (err) {
       ctx.throw(500, getErrorMessage(err));
+    }
+  },
+  async getPublicAjax(ctx: StrapiContext) {
+    try {
+      const h5pService = strapi.plugin("h5p").service("service");
+      const action = assertPublicAjaxAction(ctx.query.action);
+      const result = await h5pService.handleAjax({
+        action,
+        query: ctx.query,
+        user: ctx.state?.user,
+        method: "GET",
+      });
+      if (result && result.body !== void 0) {
+        if (result.contentType) {
+          ctx.type = result.contentType;
+        }
+        if (result.status) {
+          ctx.status = result.status;
+        }
+        ctx.body = result.body;
+      } else {
+        ctx.body = result;
+      }
+    } catch (err) {
+      const status = Number((err as { status?: number })?.status) || 500;
+      ctx.throw(status, getErrorMessage(err));
     }
   },
 });
