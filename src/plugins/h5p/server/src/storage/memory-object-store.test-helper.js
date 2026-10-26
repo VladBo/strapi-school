@@ -29,6 +29,7 @@ function createMemoryS3Fixture({ objects = {}, pageSize = 1000 } = {}) {
         contentType: value.contentType,
         etag: value.etag ?? `\"${key}\"`,
         lastModified: value.lastModified ?? new Date('2026-01-01T00:00:00.000Z'),
+        metadata: value.metadata,
       },
     ]),
   );
@@ -55,6 +56,7 @@ function createMemoryS3Fixture({ objects = {}, pageSize = 1000 } = {}) {
           ContentType: object.contentType,
           ETag: object.etag,
           LastModified: object.lastModified,
+          Metadata: object.metadata,
         };
       }
 
@@ -66,6 +68,7 @@ function createMemoryS3Fixture({ objects = {}, pageSize = 1000 } = {}) {
           ContentType: object.contentType,
           ETag: object.etag,
           LastModified: object.lastModified,
+          Metadata: object.metadata,
         };
       }
 
@@ -113,6 +116,7 @@ function createMemoryS3Fixture({ objects = {}, pageSize = 1000 } = {}) {
           contentType: params.ContentType,
           etag: `\"${params.Key}\"`,
           lastModified: new Date('2026-01-01T00:00:00.000Z'),
+          metadata: params.Metadata,
         });
         return { ETag: `\"${params.Key}\"` };
       },

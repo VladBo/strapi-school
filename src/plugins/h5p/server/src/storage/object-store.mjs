@@ -124,6 +124,7 @@ export function createS3ObjectStore({
         etag: result.ETag,
         contentType: result.ContentType,
         lastModified: result.LastModified,
+        metadata: result.Metadata,
         stream: asNodeReadable(result.Body),
       };
     } catch (error) {
@@ -144,6 +145,7 @@ export function createS3ObjectStore({
         etag: result.ETag,
         contentType: result.ContentType,
         lastModified: result.LastModified,
+        metadata: result.Metadata,
       };
     } catch (error) {
       if (isNotFound(error)) throw createNotFoundError(normalizedKey, error);

@@ -70,6 +70,23 @@ test('gets byte ranges as streams with object metadata', async () => {
   assert.equal(get.input.Range, 'bytes=0-99');
 });
 
+test('returns object metadata from head for verified migrations', async () => {
+  const fixture = createMemoryS3Fixture({
+    objects: {
+      'school/media/photo.png': {
+        body: 'photo',
+        metadata: { sha256: 'checksum' },
+      },
+    },
+  });
+  const { createS3ObjectStore } = await loadObjectStore();
+  const store = createS3ObjectStore({ ...fixture, bucket: 'assets', prefix: 'school' });
+
+  const object = await store.head('media/photo.png');
+
+  assert.deepEqual(object.metadata, { sha256: 'checksum' });
+});
+
 test('maps missing objects to false for exists while preserving the not-found error for get', async () => {
   const fixture = createMemoryS3Fixture();
   const { createS3ObjectStore } = await loadObjectStore();
