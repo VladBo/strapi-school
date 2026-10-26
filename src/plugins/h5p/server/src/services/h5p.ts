@@ -1,7 +1,12 @@
 import path from "node:path";
 import fs from "fs-extra";
 import * as h5pServer from "@lumieducation/h5p-server";
-import type { H5PUser, H5PConfigState, HandleAjaxArgs } from "../types";
+import type {
+  H5PUser,
+  H5PConfigState,
+  H5PFileResponse,
+  HandleAjaxArgs,
+} from "../types";
 import {
   resolveUser,
   getMimeType,
@@ -17,16 +22,24 @@ import {
   resolveMaxFileSize,
   resolveMaxTotalSize,
 } from "./h5p-import.mjs";
+import { createH5PStorages } from "../storage/h5p-storage-factory.mjs";
+import { createH5PFileResponse } from "./h5p-file-response.mjs";
 
 const service = ({ strapi }: { strapi: Core.Strapi }) => {
   const state: {
     h5pConfig: H5PConfigState | null;
     h5pEditor: any | null;
     h5pPlayer: any | null;
+    libraryStorage: any | null;
+    contentStorage: any | null;
+    objectStore: any | null;
   } = {
     h5pConfig: null,
     h5pEditor: null,
     h5pPlayer: null,
+    libraryStorage: null,
+    contentStorage: null,
+    objectStore: null,
   };
 
   const getConfig = (): H5PConfigState => {
@@ -90,16 +103,26 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
       await fs.ensureDir(contentPath);
       await fs.ensureDir(temporaryPath);
       const cache = new h5pServer.fsImplementations.InMemoryStorage();
-      const libraryStorage = new h5pServer.fsImplementations.FileLibraryStorage(
-        libraryPath,
-      );
-      const contentStorage = new h5pServer.fsImplementations.FileContentStorage(
-        contentPath,
-      );
-      const temporaryStorage =
-        new h5pServer.fsImplementations.DirectoryTemporaryFileStorage(
+      const storageDriver = String(
+        process.env.STORAGE_DRIVER || pluginConfig.storageDriver || "local",
+      ).toLowerCase();
+      const { libraryStorage, contentStorage, temporaryStorage, objectStore } =
+        createH5PStorages({
+          driver: storageDriver,
+          libraryPath,
+          contentPath,
           temporaryPath,
-        );
+          s3: {
+            endpoint: process.env.S3_ENDPOINT,
+            region: process.env.S3_REGION,
+            accessKeyId: process.env.S3_ACCESS_KEY_ID,
+            secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+            bucket: process.env.S3_LIVE_BUCKET,
+          },
+        });
+      state.libraryStorage = libraryStorage;
+      state.contentStorage = contentStorage;
+      state.objectStore = objectStore;
       state.h5pEditor = new h5pServer.H5PEditor(
         cache,
         h5pConfig,
@@ -422,15 +445,20 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
     async getLibraryFile(
       ubername: string,
       file: string,
-    ): Promise<{ stream: NodeJS.ReadableStream; mimeType: string }> {
+      rangeHeader?: string,
+    ): Promise<H5PFileResponse> {
       try {
-        const h5pConfig = getConfig();
-        const filePath = path.join(
-          h5pConfig.contentStorage.libraryPath,
-          ubername,
-          file,
-        );
-        return getFileStreamResponse(filePath);
+        if (!state.libraryStorage) {
+          throw new Error("H5P library storage not initialized");
+        }
+        const library = h5pServer.LibraryName.fromUberName(ubername);
+        return createH5PFileResponse({
+          filename: file,
+          mimeType: getMimeType(file),
+          rangeHeader,
+          getStats: () => state.libraryStorage.getFileStats(library, file),
+          getStream: () => state.libraryStorage.getFileStream(library, file),
+        });
       } catch (error) {
         strapi.log.error("Failed to get library file:", error);
         throw error;
@@ -439,21 +467,35 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
     async getContentFile(
       contentId: string,
       file: string,
-    ): Promise<{ stream: NodeJS.ReadableStream; mimeType: string }> {
+      rangeHeader?: string,
+    ): Promise<H5PFileResponse> {
       try {
-        const h5pConfig = getConfig();
+        if (!state.contentStorage) {
+          throw new Error("H5P content storage not initialized");
+        }
         let resolvedFile = file;
         if (file === "content/content.json") {
           resolvedFile = "content.json";
         } else if (file.startsWith("content/")) {
           resolvedFile = file.replace(/^content\//, "");
         }
-        const filePath = path.join(
-          h5pConfig.contentStorage.contentPath,
-          contentId,
-          resolvedFile,
-        );
-        return getFileStreamResponse(filePath);
+        return createH5PFileResponse({
+          filename: resolvedFile,
+          mimeType: getMimeType(resolvedFile),
+          rangeHeader,
+          getStats: () =>
+            state.contentStorage.getFileStats(contentId, resolvedFile),
+          getStream: () =>
+            state.contentStorage.getFileStream(contentId, resolvedFile),
+          getRangeStream: (start: number, end: number) =>
+            state.contentStorage.getFileStream(
+              contentId,
+              resolvedFile,
+              undefined,
+              start,
+              end,
+            ),
+        });
       } catch (error) {
         strapi.log.error("Failed to get content file:", error);
         throw error;
@@ -535,6 +577,17 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
         strapi.log.error(`Failed to read file ${filePath}:`, error);
         throw error;
       }
+    },
+    async checkStorage(): Promise<void> {
+      if (state.objectStore) {
+        await state.objectStore.list("libraries/");
+        return;
+      }
+      const config = getConfig();
+      await Promise.all([
+        fs.access(config.contentStorage.libraryPath),
+        fs.access(config.contentStorage.contentPath),
+      ]);
     },
     getMimeType,
   };

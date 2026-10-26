@@ -21,10 +21,21 @@ export type H5PConfigState = {
   contentTypeCacheUrl: string;
   contentHubMetadataUrl: string;
   contentStorage: {
+    driver?: "local" | "s3";
     libraryPath: string;
     contentPath: string;
     temporaryPath: string;
   };
+};
+
+export type H5PFileResponse = {
+  stream: NodeJS.ReadableStream;
+  mimeType: string;
+  status: 200 | 206;
+  totalSize: number;
+  contentLength: number;
+  range: { start: number; end: number; length: number } | null;
+  contentRange?: string;
 };
 
 export type HandleAjaxArgs = {

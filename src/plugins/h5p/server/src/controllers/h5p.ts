@@ -1,6 +1,19 @@
 import { Core } from "@strapi/strapi";
 import type { StrapiContext } from "../types";
 import { getErrorMessage, createSlug } from "../utils";
+import {
+  applyH5PFileResponse,
+  applyRangeErrorResponse,
+} from "../services/h5p-file-response.mjs";
+
+const throwFileError = (ctx: StrapiContext, err: unknown) => {
+  if (applyRangeErrorResponse(ctx, err)) return;
+  const status =
+    Number((err as { httpStatusCode?: number })?.httpStatusCode) ||
+    Number((err as { status?: number })?.status) ||
+    500;
+  ctx.throw(status, getErrorMessage(err));
+};
 
 const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
   async findContent(ctx: StrapiContext) {
@@ -187,11 +200,11 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
       const file = await h5pService.getLibraryFile(
         ctx.params.ubername,
         ctx.params.file,
+        ctx.get("range") || undefined,
       );
-      ctx.type = file.mimeType;
-      ctx.body = file.stream;
+      applyH5PFileResponse(ctx, file);
     } catch (err) {
-      ctx.throw(500, getErrorMessage(err));
+      throwFileError(ctx, err);
     }
   },
   async getContentFile(ctx: StrapiContext) {
@@ -200,11 +213,11 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
       const file = await h5pService.getContentFile(
         ctx.params.contentId,
         ctx.params.file,
+        ctx.get("range") || undefined,
       );
-      ctx.type = file.mimeType;
-      ctx.body = file.stream;
+      applyH5PFileResponse(ctx, file);
     } catch (err) {
-      ctx.throw(500, getErrorMessage(err));
+      throwFileError(ctx, err);
     }
   },
   async getCoreFile(ctx: StrapiContext) {
