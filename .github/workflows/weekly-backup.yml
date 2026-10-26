@@ -1,0 +1,82 @@
+name: Weekly encrypted backup
+
+on:
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      AGE_RECIPIENT: ${{ secrets.AGE_RECIPIENT }}
+      BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+      BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+      BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+      BACKUP_S3_REGION: ${{ secrets.BACKUP_S3_REGION }}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+      LIVE_S3_ACCESS_KEY_ID: ${{ secrets.LIVE_S3_ACCESS_KEY_ID }}
+      LIVE_S3_BUCKET: ${{ secrets.LIVE_S3_BUCKET }}
+      LIVE_S3_ENDPOINT: ${{ secrets.LIVE_S3_ENDPOINT }}
+      LIVE_S3_REGION: ${{ secrets.LIVE_S3_REGION }}
+      LIVE_S3_SECRET_ACCESS_KEY: ${{ secrets.LIVE_S3_SECRET_ACCESS_KEY }}
+      NEON_DIRECT_DATABASE_URL: ${{ secrets.NEON_DIRECT_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install database and encryption tools
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client age
+      - name: Install application dependencies
+        run: npm ci
+      - name: Create and validate PostgreSQL dump
+        run: |
+          pg_dump "$NEON_DIRECT_DATABASE_URL" --format=custom --file database.dump
+          pg_restore --list database.dump > /dev/null
+      - name: Encrypt database dump
+        run: age --recipient "$AGE_RECIPIENT" --output database.dump.age database.dump
+      - name: Snapshot durable objects
+        id: snapshot
+        run: |
+          snapshot_timestamp="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          echo "prefix=snapshots/${snapshot_timestamp}" >> "$GITHUB_OUTPUT"
+          node scripts/backup/snapshot-objects.mjs \
+            --snapshot-prefix "snapshots/${snapshot_timestamp}" \
+            --manifest manifest.json
+      - name: Upload encrypted database and checksum manifest
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_S3_REGION }}
+          SNAPSHOT_PREFIX: ${{ steps.snapshot.outputs.prefix }}
+        run: |
+          sha256sum database.dump.age manifest.json > SHA256SUMS
+          printf '%s\n' "$GITHUB_SHA" > application-commit.txt
+          aws s3 cp database.dump.age "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/database.dump.age" --endpoint-url "$BACKUP_S3_ENDPOINT"
+          aws s3 cp SHA256SUMS "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/SHA256SUMS" --endpoint-url "$BACKUP_S3_ENDPOINT"
+          aws s3 cp application-commit.txt "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/application-commit.txt" --endpoint-url "$BACKUP_S3_ENDPOINT"
+      - name: Verify uploaded snapshot and checksums
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_S3_REGION }}
+          SNAPSHOT_PREFIX: ${{ steps.snapshot.outputs.prefix }}
+        run: |
+          node scripts/backup/verify-backup.mjs manifest.json
+          mkdir verification
+          aws s3 cp "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/database.dump.age" verification/database.dump.age --endpoint-url "$BACKUP_S3_ENDPOINT"
+          aws s3 cp "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/manifest.json" verification/manifest.json --endpoint-url "$BACKUP_S3_ENDPOINT"
+          aws s3 cp "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/SHA256SUMS" verification/SHA256SUMS --endpoint-url "$BACKUP_S3_ENDPOINT"
+          (cd verification && sha256sum --check SHA256SUMS)
+      - name: Mark verified snapshot complete
+        run: node scripts/backup/finalize-backup.mjs "${{ steps.snapshot.outputs.prefix }}"
+      - name: Plan retention
+        run: npm run backup:retention
+      - name: Apply retention after verified backup
+        if: ${{ vars.BACKUP_RETENTION_ENABLED == 'true' }}
+        run: npm run backup:retention -- --apply-retention

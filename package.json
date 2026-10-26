@@ -14,6 +14,7 @@
     "migration:h5p": "node ./scripts/migration/import-drupal-h5p.js",
     "seed:example": "node ./scripts/seed.js",
     "start": "strapi start",
+    "backup:retention": "node ./scripts/backup/apply-retention.mjs",
     "storage:migrate": "node ./scripts/storage/migrate-to-object-storage.mjs",
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
