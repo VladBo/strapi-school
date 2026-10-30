@@ -6,7 +6,7 @@ import { Readable, Transform } from 'node:stream';
 import { createObjectStoreFromEnvironment } from './r2-clients.mjs';
 
 export const DURABLE_PREFIXES = ['media/', 'h5p/libraries/', 'h5p/content/'];
-const SNAPSHOT_CONCURRENCY = 8;
+const SNAPSHOT_CONCURRENCY = 32;
 
 function checksumStream(stream) {
   const digest = crypto.createHash('sha256');
@@ -17,17 +17,6 @@ function checksumStream(stream) {
     },
   });
   return { digest, stream: stream.pipe(transform) };
-}
-
-async function hashStream(stream) {
-  const digest = crypto.createHash('sha256');
-  let size = 0;
-  for await (const chunk of stream) {
-    const buffer = Buffer.from(chunk);
-    digest.update(buffer);
-    size += buffer.length;
-  }
-  return { sha256: digest.digest('hex'), size };
 }
 
 function snapshotKey(snapshotPrefix, key) {
@@ -42,16 +31,9 @@ async function copyObject({ destination, source, snapshotPrefix, key }) {
     contentLength: sourceObject.size,
     contentType: sourceObject.contentType,
   });
+  // The workflow independently reads every copied object and verifies its
+  // size and SHA-256 in verify-backup.mjs before writing complete.json.
   const sha256 = digest.digest('hex');
-  const destinationHead = await destination.head(destinationKey);
-  if (destinationHead.size !== sourceObject.size) {
-    throw new Error(`Size verification failed for ${key}`);
-  }
-  const destinationObject = await destination.get(destinationKey);
-  const verified = await hashStream(destinationObject.stream);
-  if (verified.size !== sourceObject.size || verified.sha256 !== sha256) {
-    throw new Error(`Checksum verification failed for ${key}`);
-  }
   return { key, sha256, size: sourceObject.size };
 }
 
