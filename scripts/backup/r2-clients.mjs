@@ -8,6 +8,19 @@ function required(name) {
   return value;
 }
 
+async function bufferBody(body) {
+  if (Buffer.isBuffer(body)) return body;
+  if (body instanceof Uint8Array) return Buffer.from(body);
+  if (typeof body === 'string') return Buffer.from(body);
+  if (!body || typeof body[Symbol.asyncIterator] !== 'function') {
+    throw new TypeError('Backup object body must be a byte stream');
+  }
+
+  const chunks = [];
+  for await (const chunk of body) chunks.push(Buffer.from(chunk));
+  return Buffer.concat(chunks);
+}
+
 export function createObjectStoreFromEnvironment(scope) {
   const client = new S3Client({
     credentials: {
@@ -21,11 +34,17 @@ export function createObjectStoreFromEnvironment(scope) {
   return createS3ObjectStore({
     bucket: required(`${scope}_BUCKET`),
     client,
-    // Cloudflare R2 rejects the AWS SDK's managed multipart path for these
-    // backup copies. Current durable objects are well below the 5 GB single
-    // PutObject limit, so use the S3-compatible single-request operation.
+    // Cloudflare R2 rejects managed multipart uploads and requires an explicit
+    // Content-Length for streamed PUTs. These individual objects fit in memory
+    // and are below the 5 GB single-PUT limit, so buffer each request and send
+    // a single PUT with the exact byte length.
     createUpload: ({ client: s3Client, params }) => ({
-      done: () => s3Client.send(new PutObjectCommand(params)),
+      done: async () => {
+        const body = await bufferBody(params.Body);
+        return s3Client.send(
+          new PutObjectCommand({ ...params, Body: body, ContentLength: body.byteLength }),
+        );
+      },
     }),
   });
 }

@@ -6,7 +6,7 @@ import { Readable, Transform } from 'node:stream';
 import { createObjectStoreFromEnvironment } from './r2-clients.mjs';
 
 export const DURABLE_PREFIXES = ['media/', 'h5p/libraries/', 'h5p/content/'];
-const SNAPSHOT_CONCURRENCY = 32;
+const SNAPSHOT_CONCURRENCY = 16;
 
 function checksumStream(stream) {
   const digest = crypto.createHash('sha256');
