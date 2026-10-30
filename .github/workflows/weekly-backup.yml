@@ -68,6 +68,7 @@ jobs:
           sha256sum database.dump.age manifest.json > SHA256SUMS
           printf '%s\n' "$GITHUB_SHA" > application-commit.txt
           aws s3 cp database.dump.age "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/database.dump.age" --endpoint-url "$BACKUP_S3_ENDPOINT"
+          aws s3 cp manifest.json "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/manifest.json" --endpoint-url "$BACKUP_S3_ENDPOINT"
           aws s3 cp SHA256SUMS "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/SHA256SUMS" --endpoint-url "$BACKUP_S3_ENDPOINT"
           aws s3 cp application-commit.txt "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/application-commit.txt" --endpoint-url "$BACKUP_S3_ENDPOINT"
       - name: Verify uploaded snapshot and checksums
