@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-import { S3Client } from '@aws-sdk/client-s3';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 import migration from './migrate-to-object-storage.js';
 import { createS3ObjectStore } from '../../src/plugins/h5p/server/src/storage/object-store.mjs';
@@ -61,6 +61,12 @@ function createObjectStoreForApply() {
   return createS3ObjectStore({
     bucket: s3Options.params.Bucket,
     client,
+    // Cloudflare R2 rejected multipart uploads from the migration's large H5P
+    // videos with a malformed-XML error. The migration set is small enough for
+    // single PUT requests (largest current file is under 50 MB).
+    createUpload: ({ client: s3Client, params }) => ({
+      done: () => s3Client.send(new PutObjectCommand(params)),
+    }),
   });
 }
 

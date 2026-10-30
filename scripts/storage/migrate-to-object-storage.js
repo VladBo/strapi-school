@@ -5,6 +5,8 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const mime = require("mime-types");
 
+const MIGRATION_CONCURRENCY = 4;
+
 const SOURCE_ROOTS = [
   { kind: "media", directory: "public/uploads", destinationPrefix: "media" },
   {
@@ -209,35 +211,50 @@ async function executeMigrationPlan(
     throw new TypeError("A destination object store with head and put methods is required for --apply");
   }
 
-  const items = [];
-  for (const object of plan.objects) {
-    try {
-      const destination = await inspectDestination(store, object);
-      if (destination.status === "skipped") {
-        summary.skipped += 1;
-        items.push({ key: object.key, sha256: object.sha256, status: "skipped" });
-        continue;
-      }
-      if (destination.status === "conflict") {
-        summary.conflicts += 1;
-        items.push({ ...destination, key: object.key, sha256: object.sha256 });
-        break;
-      }
+  const results = new Array(plan.objects.length);
+  let nextIndex = 0;
+  let stopped = false;
 
-      await uploadAndVerify(store, object);
-      summary.uploaded += 1;
-      items.push({ key: object.key, sha256: object.sha256, status: "uploaded" });
-    } catch (error) {
-      summary.errors += 1;
-      items.push({
-        error: error.message || String(error),
-        key: object.key,
-        sha256: object.sha256,
-        status: "error",
-      });
-      break;
+  async function migrateNextObject() {
+    while (!stopped) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= plan.objects.length) return;
+
+      const object = plan.objects[index];
+      try {
+        const destination = await inspectDestination(store, object);
+        if (destination.status === "skipped") {
+          summary.skipped += 1;
+          results[index] = { key: object.key, sha256: object.sha256, status: "skipped" };
+          continue;
+        }
+        if (destination.status === "conflict") {
+          summary.conflicts += 1;
+          results[index] = { ...destination, key: object.key, sha256: object.sha256 };
+          stopped = true;
+          continue;
+        }
+
+        await uploadAndVerify(store, object);
+        summary.uploaded += 1;
+        results[index] = { key: object.key, sha256: object.sha256, status: "uploaded" };
+      } catch (error) {
+        summary.errors += 1;
+        results[index] = {
+          error: error.message || String(error),
+          key: object.key,
+          sha256: object.sha256,
+          status: "error",
+        };
+        stopped = true;
+      }
     }
   }
+
+  const workerCount = Math.min(MIGRATION_CONCURRENCY, plan.objects.length);
+  await Promise.all(Array.from({ length: workerCount }, () => migrateNextObject()));
+  const items = results.filter(Boolean);
 
   if (summary.errors === 0 && summary.conflicts === 0) {
     for (const update of plan.mediaUpdates) {
