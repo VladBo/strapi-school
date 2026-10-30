@@ -3,7 +3,8 @@ services:
     name: strapi-school
     runtime: docker
     plan: free
-    healthCheckPath: /api/health/storage
+    # Strapi's admin entry point is available independently of custom API routes.
+    healthCheckPath: /admin
     envVars:
       - key: NODE_ENV
         value: production
