@@ -121,7 +121,10 @@ coverage
 # Strapi
 ############################
 
+# Local environment files; keep the committed template.
 .env
+/.env.*
+!/.env.example
 license.txt
 exports
 .strapi
