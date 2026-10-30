@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   backup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       AGE_RECIPIENT: ${{ secrets.AGE_RECIPIENT }}
       BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
@@ -31,13 +31,23 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install database and encryption tools
-        run: sudo apt-get update && sudo apt-get install --yes postgresql-client age
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes age ca-certificates curl
+          sudo install -d /usr/share/keyrings
+          curl --fail --location --silent --show-error https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo tee /usr/share/keyrings/postgresql.asc > /dev/null
+          echo 'deb [signed-by=/usr/share/keyrings/postgresql.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main' \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client-18
+          /usr/lib/postgresql/18/bin/pg_dump --version
       - name: Install application dependencies
         run: npm ci
       - name: Create and validate PostgreSQL dump
         run: |
-          pg_dump "$NEON_DIRECT_DATABASE_URL" --format=custom --file database.dump
-          pg_restore --list database.dump > /dev/null
+          /usr/lib/postgresql/18/bin/pg_dump "$NEON_DIRECT_DATABASE_URL" --format=custom --file database.dump
+          /usr/lib/postgresql/18/bin/pg_restore --list database.dump > /dev/null
       - name: Encrypt database dump
         run: age --recipient "$AGE_RECIPIENT" --output database.dump.age database.dump
       - name: Snapshot durable objects
