@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+.git
+.github
+.superpowers
+dist
+**/node_modules
+**/*.test.js
+**/*.spec.js
+migration-artifacts
+public/h5p/content
+public/h5p/libraries
+public/h5p/temp-files

@@ -26,6 +26,11 @@
       "type": "text",
       "required": true
     },
+    "defaultLocale": {
+      "type": "string",
+      "required": true,
+      "default": "uk"
+    },
     "defaultSeo": {
       "type": "component",
       "repeatable": false,

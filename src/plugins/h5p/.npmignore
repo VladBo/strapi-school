@@ -1,0 +1,32 @@
+# Source files (dist is published)
+admin/src
+server/src
+
+# Development files
+node_modules
+.strapi-updater.json
+tsconfig.build.json
+packup.config.ts
+package-lock.json
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+coverage
+
+# Build artifacts
+*.log
+*.tsbuildinfo

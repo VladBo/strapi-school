@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: strapi-school
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health/storage
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: STORAGE_DRIVER
+        value: s3
+      - key: DATABASE_SSL
+        value: 'true'
+      - key: DATABASE_POOL_MIN
+        value: '0'
+      - key: DATABASE_POOL_MAX
+        value: '5'
+      - key: DATABASE_CLIENT
+        value: postgres
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_KEYS
+        sync: false
+      - key: API_TOKEN_SALT
+        sync: false
+      - key: ADMIN_JWT_SECRET
+        sync: false
+      - key: TRANSFER_TOKEN_SALT
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_LIVE_BUCKET
+        sync: false
+      - key: ASSET_BASE_URL
+        sync: false

@@ -183,6 +183,7 @@ export interface SharedSlide extends Struct.ComponentSchema {
     image: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     subtitle: Schema.Attribute.String;
     title: Schema.Attribute.String;
+    url: Schema.Attribute.String;
   };
 }
 

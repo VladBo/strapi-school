@@ -53,6 +53,30 @@
       "relation": "manyToMany",
       "target": "api::category.category",
       "inversedBy": "taggedInArticles"
+    },
+    "legacyNid": {
+      "type": "integer",
+      "unique": true
+    },
+    "legacyPath": {
+      "type": "string"
+    },
+    "sourceLocale": {
+      "type": "string",
+      "default": "uk"
+    },
+    "sourceCreatedAt": {
+      "type": "datetime"
+    },
+    "sourceUpdatedAt": {
+      "type": "datetime"
+    },
+    "legacyData": {
+      "type": "json"
+    },
+    "migrationHash": {
+      "type": "string",
+      "private": true
     }
   }
 }

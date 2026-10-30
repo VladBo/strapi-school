@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "h5p_contents",
+  "info": {
+    "singularName": "h5p-content",
+    "pluralName": "h5p-contents",
+    "displayName": "H5P Content",
+    "description": "H5P interactive content for quizzes"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "h5pContent": {
+      "type": "json",
+      "customField": "plugin::h5p.h5p-editor"
+    },
+    "legacyNid": {
+      "type": "integer",
+      "unique": true
+    },
+    "legacyPath": {
+      "type": "string"
+    },
+    "sourceLocale": {
+      "type": "string",
+      "default": "uk"
+    },
+    "sourcePublished": {
+      "type": "boolean",
+      "default": false
+    },
+    "sourceLibrary": {
+      "type": "string"
+    },
+    "packageFilename": {
+      "type": "string"
+    },
+    "migrationStatus": {
+      "type": "enumeration",
+      "enum": [
+        "package-ready",
+        "imported",
+        "blocked"
+      ],
+      "default": "package-ready"
+    },
+    "migrationHash": {
+      "type": "string",
+      "private": true
+    }
+  }
+}
