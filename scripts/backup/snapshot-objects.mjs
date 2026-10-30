@@ -6,6 +6,7 @@ import { Readable, Transform } from 'node:stream';
 import { createObjectStoreFromEnvironment } from './r2-clients.mjs';
 
 export const DURABLE_PREFIXES = ['media/', 'h5p/libraries/', 'h5p/content/'];
+const SNAPSHOT_CONCURRENCY = 8;
 
 function checksumStream(stream) {
   const digest = crypto.createHash('sha256');
@@ -54,6 +55,31 @@ async function copyObject({ destination, source, snapshotPrefix, key }) {
   return { key, sha256, size: sourceObject.size };
 }
 
+async function mapWithConcurrency(items, concurrency, map) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  let failure;
+
+  async function worker() {
+    while (!failure) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+
+      try {
+        results[index] = await map(items[index]);
+      } catch (error) {
+        failure = error;
+      }
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  if (failure) throw failure;
+  return results;
+}
+
 export async function snapshotObjects({
   destination,
   source,
@@ -64,12 +90,14 @@ export async function snapshotObjects({
   const objects = [];
   for (const prefix of prefixes) {
     const listed = await source.list(prefix);
-    for (const object of listed.sort((left, right) => left.key.localeCompare(right.key))) {
+    const sorted = listed.sort((left, right) => left.key.localeCompare(right.key));
+    const prefixObjects = await mapWithConcurrency(sorted, SNAPSHOT_CONCURRENCY, async (object) => {
       if (!object.key.startsWith(prefix)) {
         throw new Error(`Live object escaped requested prefix: ${object.key}`);
       }
-      objects.push(await copyObject({ destination, key: object.key, snapshotPrefix, source }));
-    }
+      return copyObject({ destination, key: object.key, snapshotPrefix, source });
+    });
+    objects.push(...prefixObjects);
   }
   objects.sort((left, right) => left.key.localeCompare(right.key));
   const manifest = {
