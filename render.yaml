@@ -43,3 +43,5 @@ services:
         sync: false
       - key: ASSET_BASE_URL
         sync: false
+      - key: ASSET_BASE_URL
+        sync: false
