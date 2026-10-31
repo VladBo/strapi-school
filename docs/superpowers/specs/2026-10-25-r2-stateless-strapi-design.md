@@ -69,7 +69,7 @@ Neon PostgreSQL      Cloudflare R2
 GitHub Actions (weekly)
    ├── pg_dump Neon
    ├── snapshot live object prefixes
-   ├── validate + checksum + encrypt
+   ├── validate + checksum
    └── private R2 backup bucket
 ```
 
@@ -131,9 +131,8 @@ A scheduled GitHub Actions workflow runs weekly independently of Strapi:
 2. Validate it with `pg_restore --list`.
 3. Produce manifests for the live `media/`, `h5p/libraries/`, and `h5p/content/` prefixes, including object key, size, ETag where reliable, and SHA-256 for downloaded artifacts.
 4. Copy the live prefixes into a timestamped snapshot in a separate private R2 backup bucket.
-5. Encrypt the database dump with an `age` public key whose private key is stored offline, not in GitHub.
-6. Upload the encrypted dump, manifests, checksums, application commit SHA, and schema/version metadata.
-7. Download and verify the uploaded metadata and dump checksum before reporting success.
+5. Upload the database dump, manifests, checksums, application commit SHA, and schema/version metadata to the private backup bucket.
+6. Download and verify the uploaded metadata and dump checksum before reporting success.
 
 Retain eight weekly snapshots and six month-end snapshots. Apply bucket lifecycle rules only after two successful backup runs and one manual restore rehearsal. The workflow may delete only objects under its own dated `backups/` prefix.
 
@@ -158,7 +157,7 @@ Rollback switches Next.js back to the old Strapi URL or redeploys the filesystem
 
 - Use separate R2 tokens for runtime live objects and backup writes.
 - Keep the backup bucket private and deny public development URLs.
-- Store only an `age` public key in CI; keep the recovery private key offline in two controlled copies.
+- Keep the backup bucket private and restrict its credentials; backups are plaintext, so anyone with bucket access can read them.
 - Pin provider and AWS SDK versions; use automated dependency updates only with integration tests.
 - Log bucket operation failures without object contents, credentials, or signed URLs.
 - Add a health endpoint that checks dependencies without performing writes.

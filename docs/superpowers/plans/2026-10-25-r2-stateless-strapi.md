@@ -374,7 +374,7 @@ git add lib/h5p-proxy.mjs lib/h5p-proxy.test.js app/api/h5p package.json
 git commit -m "fix(h5p): stream ranged object responses"
 ```
 
-### Task 9: Weekly Encrypted Backup Workflow
+### Task 9: Weekly Private Backup Workflow
 
 **Files:**
 - Create: `scripts/backup/snapshot-objects.mjs`
@@ -386,8 +386,8 @@ git commit -m "fix(h5p): stream ranged object responses"
 - Modify: `package.json`
 
 **Interfaces:**
-- Consumes: direct Neon URL; read-only live R2 credentials; write-only private backup R2 credentials; `age` public key; Task 1 object-store behavior.
-- Produces: `snapshots/<UTC timestamp>/database.dump.age`, copied object prefixes, `manifest.json`, `SHA256SUMS`, verification result, and `planRetention(snapshots, policy)`.
+- Consumes: direct Neon URL; read-only live R2 credentials; private backup R2 credentials; Task 1 object-store behavior.
+- Produces: `snapshots/<UTC timestamp>/database.dump`, copied object prefixes, `manifest.json`, `SHA256SUMS`, verification result, and `planRetention(snapshots, policy)`.
 
 - [ ] **Step 1: Write failing snapshot and retention tests**
 
@@ -405,23 +405,23 @@ Copy only `media/`, `h5p/libraries/`, and `h5p/content/` through separate source
 
 - [ ] **Step 4: Implement the scheduled workflow**
 
-Run weekly and via `workflow_dispatch`: install PostgreSQL client and `age`, create a custom-format dump, require `pg_restore --list` success, encrypt, snapshot objects, upload metadata, and verify uploaded checksums. Apply retention last only when the `BACKUP_RETENTION_ENABLED` repository variable is explicitly `true`; default it to disabled. Store every credential as a GitHub Actions secret.
+Run weekly and via `workflow_dispatch`: install PostgreSQL client, create a custom-format dump, require `pg_restore --list` success, snapshot objects, upload the plaintext dump and metadata to the private backup bucket, and verify uploaded checksums. Keep the bucket private and restrict its credentials because the dump is unencrypted. Apply retention last only when the `BACKUP_RETENTION_ENABLED` repository variable is explicitly `true`; default it to disabled. Store every credential as a GitHub Actions secret.
 
 - [ ] **Step 5: Document backup and manual restore**
 
-Include secret names, least-privilege token scopes, offline private-key handling, database restore, isolated object-prefix restore, validation queries, and the rule that production restore is never automatic. State that retention may be enabled only after two verified backup runs and one disposable restore rehearsal.
+Include secret names, least-privilege token scopes, database restore, isolated object-prefix restore, validation queries, and the rule that production restore is never automatic. State that dumps are plaintext in a private bucket, and retention may be enabled only after two verified backup runs and one disposable restore rehearsal.
 
 - [ ] **Step 6: Run tests and validate workflow syntax**
 
 Run: `node --test scripts/backup/backup-policy.test.js && npm run build`
 
-Expected: tests/build pass; workflow has no literal secrets and orders dump → validate → encrypt → snapshot → verify → retention.
+Expected: tests/build pass; workflow has no literal secrets and orders dump → validate → snapshot → verify → retention.
 
 - [ ] **Step 7: Commit**
 
 ```bash
 git add scripts/backup .github/workflows/weekly-backup.yml docs/operations/backup-and-restore.md package.json package-lock.json
-git commit -m "feat(backup): add weekly encrypted snapshots"
+git commit -m "feat(backup): add weekly private snapshots"
 ```
 
 ### Task 10: Render and Neon Deployment, Migration, and Restore Rehearsal
