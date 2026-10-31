@@ -17,7 +17,7 @@ function safeSnapshotPrefix(prefix) {
 
 export function planRetention(
   snapshots,
-  { weekly = 4, monthEnds = 3, incompleteAgeDays = 7, now = new Date() } = {},
+  { weekly = 4, monthEnds = 3, incompleteAgeDays = 1, now = new Date() } = {},
 ) {
   const incompleteCutoff = now.valueOf() - incompleteAgeDays * 24 * 60 * 60 * 1000;
   const incomplete = snapshots.filter((snapshot) => !snapshot.completed);

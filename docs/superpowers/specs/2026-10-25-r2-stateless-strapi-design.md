@@ -134,7 +134,7 @@ A scheduled GitHub Actions workflow runs weekly independently of Strapi:
 5. Upload the database dump, manifests, checksums, application commit SHA, and schema/version metadata to the private backup bucket.
 6. Download and verify the uploaded metadata and dump checksum before reporting success.
 
-Retain four weekly snapshots and three month-end snapshots, and remove incomplete snapshots after seven days. A 120-day R2 lifecycle rule is a backstop for all objects under `snapshots/`. The workflow may delete only objects under its dated `snapshots/` prefix.
+Retain four weekly snapshots and three month-end snapshots, and remove incomplete snapshots after 24 hours. A 120-day R2 lifecycle rule is a backstop for all objects under `snapshots/`. The workflow may delete only objects under its dated `snapshots/` prefix.
 
 ## Migration and Cutover
 

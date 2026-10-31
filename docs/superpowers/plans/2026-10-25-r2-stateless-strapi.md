@@ -405,7 +405,7 @@ Copy only `media/`, `h5p/libraries/`, and `h5p/content/` through separate source
 
 - [ ] **Step 4: Implement the scheduled workflow**
 
-Run weekly and via `workflow_dispatch`: install PostgreSQL client, create a custom-format dump, require `pg_restore --list` success, snapshot objects, upload the plaintext dump and metadata to the private backup bucket, and verify uploaded checksums. Keep the bucket private and restrict its credentials because the dump is unencrypted. Apply four-week/three-month retention and clean incomplete snapshots older than seven days after verification; store every credential as a GitHub Actions secret.
+Run weekly and via `workflow_dispatch`: install PostgreSQL client, create a custom-format dump, require `pg_restore --list` success, snapshot objects, upload the plaintext dump and metadata to the private backup bucket, and verify uploaded checksums. Keep the bucket private and restrict its credentials because the dump is unencrypted. Apply four-week/three-month retention and clean incomplete snapshots older than 24 hours after verification; store every credential as a GitHub Actions secret.
 
 - [ ] **Step 5: Document backup and manual restore**
 
