@@ -391,7 +391,7 @@ git commit -m "fix(h5p): stream ranged object responses"
 
 - [ ] **Step 1: Write failing snapshot and retention tests**
 
-Cover streamed cross-client copy, SHA-256/size verification, paginated live listings, eight weekly plus six month-end retention, incomplete snapshot exclusion, prefix-scoped deletion plans, and failure before retention when any copy or verification fails.
+Cover streamed cross-client copy, SHA-256/size verification, paginated live listings, four weekly plus three month-end retention, stale incomplete snapshot cleanup, prefix-scoped deletion plans, and failure before retention when any copy or verification fails.
 
 - [ ] **Step 2: Run the test and verify RED**
 
@@ -405,7 +405,7 @@ Copy only `media/`, `h5p/libraries/`, and `h5p/content/` through separate source
 
 - [ ] **Step 4: Implement the scheduled workflow**
 
-Run weekly and via `workflow_dispatch`: install PostgreSQL client, create a custom-format dump, require `pg_restore --list` success, snapshot objects, upload the plaintext dump and metadata to the private backup bucket, and verify uploaded checksums. Keep the bucket private and restrict its credentials because the dump is unencrypted. Apply retention last only when the `BACKUP_RETENTION_ENABLED` repository variable is explicitly `true`; default it to disabled. Store every credential as a GitHub Actions secret.
+Run weekly and via `workflow_dispatch`: install PostgreSQL client, create a custom-format dump, require `pg_restore --list` success, snapshot objects, upload the plaintext dump and metadata to the private backup bucket, and verify uploaded checksums. Keep the bucket private and restrict its credentials because the dump is unencrypted. Apply four-week/three-month retention and clean incomplete snapshots older than seven days after verification; store every credential as a GitHub Actions secret.
 
 - [ ] **Step 5: Document backup and manual restore**
 
