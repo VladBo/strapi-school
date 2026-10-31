@@ -2,7 +2,7 @@
 
 ## Current inventory
 
-The local Strapi database contains 46 pages, 26 articles, 8 courses, 61 Media Library records, and 34 H5P records. A plaintext local dump was restored and verified at `../migration-artifacts/2026-10-31/strapi-local-plaintext-2026-10-31.dump`; the dump stays outside Git with mode `0600`.
+The local Strapi database contains 46 page rows across 23 documents (23 draft and 23 published rows), 26 article rows across 17 documents (17 draft and 9 published rows), 8 course rows across 4 documents (4 draft and 4 published rows), 61 Media Library records, and 34 H5P rows across 18 documents (18 draft and 16 published rows). A plaintext local dump was restored and verified at `../migration-artifacts/2026-10-31/strapi-local-plaintext-2026-10-31.dump`; the dump stays outside Git with mode `0600`.
 
 The production Neon snapshot from 2026-10-31 had no rows in `pages`, `articles`, `courses`, `files`, or `h5p_contents`. It has since been confirmed that the app schemas match for content transfer; the only database schema difference is optional admin audit-log tables. Recheck production immediately before transfer.
 
