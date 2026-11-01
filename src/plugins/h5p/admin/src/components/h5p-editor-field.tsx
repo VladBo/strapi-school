@@ -14,6 +14,7 @@ import type { IEditorModel, IContentMetadata } from "@lumieducation/h5p-server";
 import type { H5PEditorFieldProps, H5PContent } from "../types";
 import { parseH5PContent } from "../utils/h5p-content";
 import {
+  installH5PAdminFetchAuth,
   installH5PAdminXhrAuth,
   readStoredAdminToken,
 } from "../utils/h5p-admin-auth.mjs";
@@ -97,11 +98,23 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return undefined;
-    return installH5PAdminXhrAuth({
+    const getToken = () =>
+      readStoredAdminToken(window.localStorage, document.cookie);
+    const restoreXhrAuth = installH5PAdminXhrAuth({
       XMLHttpRequestClass: window.XMLHttpRequest,
-      getToken: () => readStoredAdminToken(window.localStorage, document.cookie),
+      getToken,
       origin: window.location.origin,
     });
+    const restoreFetchAuth = installH5PAdminFetchAuth({
+      fetchTarget: window,
+      getToken,
+      origin: window.location.origin,
+    });
+
+    return () => {
+      restoreFetchAuth();
+      restoreXhrAuth();
+    };
   }, []);
 
   // Parse the initial content on first render only.
@@ -230,13 +243,27 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
 
       const iframeWindow = iframe.contentWindow as (Window & typeof globalThis) | null;
       const iframeXhr = iframeWindow?.XMLHttpRequest;
-      if (iframeXhr && iframeXhr !== window.XMLHttpRequest) {
-        iframeAuthCleanupRef.current = installH5PAdminXhrAuth({
+      const iframeFetch = iframeWindow?.fetch;
+      const iframeGetToken = () =>
+        readStoredAdminToken(window.localStorage, document.cookie);
+      const restoreIframeAuth: Array<() => void> = [];
+      if (iframeXhr) {
+        restoreIframeAuth.push(installH5PAdminXhrAuth({
           XMLHttpRequestClass: iframeXhr,
-          getToken: () => readStoredAdminToken(window.localStorage, document.cookie),
+          getToken: iframeGetToken,
           origin: window.location.origin,
-        });
+        }));
       }
+      if (iframeWindow && iframeFetch) {
+        restoreIframeAuth.push(installH5PAdminFetchAuth({
+          fetchTarget: iframeWindow,
+          getToken: iframeGetToken,
+          origin: window.location.origin,
+        }));
+      }
+      iframeAuthCleanupRef.current = () => {
+        for (const restore of restoreIframeAuth.reverse()) restore();
+      };
 
       const observeIframeError = () => {
         try {

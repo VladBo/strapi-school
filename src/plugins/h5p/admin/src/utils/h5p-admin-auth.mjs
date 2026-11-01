@@ -67,3 +67,56 @@ export function installH5PAdminXhrAuth({
     if (prototype.send === send) prototype.send = originalSend;
   };
 }
+
+export function installH5PAdminFetchAuth({ fetchTarget, getToken, origin }) {
+  if (!fetchTarget || typeof fetchTarget.fetch !== "function" || !origin) {
+    return () => {};
+  }
+
+  const originalFetch = fetchTarget.fetch;
+
+  function fetch(input, init) {
+    let target;
+    try {
+      const requestUrl =
+        input && typeof input === "object" && typeof input.url === "string"
+          ? input.url
+          : String(input);
+      target = new URL(requestUrl, origin);
+    } catch {
+      return originalFetch.call(this, input, init);
+    }
+
+    const isPrivateH5PRequest =
+      target.origin === origin &&
+      (target.pathname === "/h5p" || target.pathname.startsWith("/h5p/"));
+    if (!isPrivateH5PRequest) {
+      return originalFetch.call(this, input, init);
+    }
+
+    const token = getToken?.();
+    if (!token) {
+      return originalFetch.call(this, input, init);
+    }
+
+    const requestHeaders =
+      input && typeof input === "object" && input.headers
+        ? input.headers
+        : undefined;
+    const headers = new Headers(requestHeaders);
+    new Headers(init?.headers).forEach((value, name) => {
+      headers.set(name, value);
+    });
+    if (!headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    return originalFetch.call(this, input, { ...init, headers });
+  }
+
+  fetchTarget.fetch = fetch;
+
+  return () => {
+    if (fetchTarget.fetch === fetch) fetchTarget.fetch = originalFetch;
+  };
+}
