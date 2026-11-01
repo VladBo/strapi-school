@@ -83,17 +83,15 @@ test('honors an explicit S3 region and rejects unknown storage drivers', async (
   );
 });
 
-test('copies runtime configuration outside Strapi configuration discovery before compilation', () => {
+test('keeps runtime helpers inside Strapi configuration compilation', () => {
   const packageJson = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'),
   );
+  const databaseConfig = fs.readFileSync(path.join(__dirname, 'database.ts'), 'utf8');
+  const pluginConfig = fs.readFileSync(path.join(__dirname, 'plugins.ts'), 'utf8');
 
-  assert.match(
-    packageJson.scripts.build,
-    /^npm run build:h5p && npm run build:runtime && strapi build$/,
-  );
-  assert.match(
-    packageJson.scripts['build:runtime'],
-    /^rm -f dist\/config\/storage-config\.cjs && mkdir -p dist\/src\/storage && cp src\/storage\/storage-config\.cjs dist\/src\/storage\/storage-config\.cjs$/,
-  );
+  assert.equal(packageJson.scripts.build, 'npm run build:h5p && strapi build');
+  assert.equal(packageJson.scripts.develop, 'npm run build:h5p && strapi develop');
+  assert.match(databaseConfig, /from '\.\/database-options'/);
+  assert.match(pluginConfig, /from "\.\/storage-options"/);
 });

@@ -163,7 +163,7 @@ export function createS3ObjectStore({
     }
   }
 
-  async function list(keyPrefix = '') {
+  async function list(keyPrefix = '', { maxKeys } = {}) {
     const normalizedPrefix = keyPrefix === '' ? '' : normalizeObjectKey(keyPrefix);
     const scopedPrefix = keyPrefix.endsWith('/') ? `${normalizedPrefix}/` : normalizedPrefix;
     const fullPrefix = rootPrefix
@@ -179,6 +179,7 @@ export function createS3ObjectStore({
         new ListObjectsV2Command({
           Bucket: bucket,
           Prefix: fullPrefix,
+          ...(maxKeys === undefined ? {} : { MaxKeys: maxKeys }),
           ...(continuationToken ? { ContinuationToken: continuationToken } : {}),
         }),
       );
@@ -191,7 +192,10 @@ export function createS3ObjectStore({
           lastModified: object.LastModified,
         });
       }
-      continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
+      continuationToken =
+        maxKeys === undefined && result.IsTruncated
+          ? result.NextContinuationToken
+          : undefined;
     } while (continuationToken);
 
     return objects;

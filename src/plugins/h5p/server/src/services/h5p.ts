@@ -68,7 +68,7 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
   return {
     async initialize(): Promise<void> {
       strapi.log.info("Initializing H5P Editor and Player...");
-      const config2 = (strapi.config.get("plugin.h5p") || {}) as {
+      const config2 = (strapi.config.get("plugin::h5p") || {}) as {
         config?: Record<string, any>;
       };
       const pluginConfig = config2.config || {};
@@ -606,7 +606,8 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
     },
     async checkStorage(): Promise<void> {
       if (state.objectStore) {
-        await state.objectStore.list("libraries/");
+        // Avoid scanning every H5P library on each Render health check.
+        await state.objectStore.list("libraries/", { maxKeys: 1 });
         return;
       }
       const config = getConfig();

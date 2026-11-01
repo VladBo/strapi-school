@@ -736,6 +736,7 @@ export interface ApiH5PContentH5PContent extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<'package-ready'>;
     packageFilename: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Unique;
     sourceLibrary: Schema.Attribute.String;
     sourceLocale: Schema.Attribute.String & Schema.Attribute.DefaultTo<'uk'>;
     sourcePublished: Schema.Attribute.Boolean &
