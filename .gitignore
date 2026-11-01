@@ -133,6 +133,7 @@ build
 .strapi-updater.json
 .strapi-cloud.json
 /.superpowers/
+/docs/superpowers/
 
 ############################
 # H5P

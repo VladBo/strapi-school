@@ -1,4 +1,4 @@
-name: Weekly encrypted backup
+name: Weekly private backup
 
 on:
   schedule:
@@ -12,7 +12,6 @@ jobs:
   backup:
     runs-on: ubuntu-24.04
     env:
-      AGE_RECIPIENT: ${{ secrets.AGE_RECIPIENT }}
       BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
       BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
       BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
@@ -30,10 +29,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - name: Install database and encryption tools
+      - name: Install database tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes age ca-certificates curl
+          sudo apt-get install --yes ca-certificates curl
           sudo install -d /usr/share/keyrings
           curl --fail --location --silent --show-error https://www.postgresql.org/media/keys/ACCC4CF8.asc \
             | sudo tee /usr/share/keyrings/postgresql.asc > /dev/null
@@ -48,8 +47,6 @@ jobs:
         run: |
           /usr/lib/postgresql/18/bin/pg_dump "$NEON_DIRECT_DATABASE_URL" --format=custom --file database.dump
           /usr/lib/postgresql/18/bin/pg_restore --list database.dump > /dev/null
-      - name: Encrypt database dump
-        run: age --recipient "$AGE_RECIPIENT" --output database.dump.age database.dump
       - name: Snapshot durable objects
         id: snapshot
         run: |
@@ -58,16 +55,16 @@ jobs:
           node scripts/backup/snapshot-objects.mjs \
             --snapshot-prefix "snapshots/${snapshot_timestamp}" \
             --manifest manifest.json
-      - name: Upload encrypted database and checksum manifest
+      - name: Upload database dump and checksum manifest
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.BACKUP_S3_REGION }}
           SNAPSHOT_PREFIX: ${{ steps.snapshot.outputs.prefix }}
         run: |
-          sha256sum database.dump.age manifest.json > SHA256SUMS
+          sha256sum database.dump manifest.json > SHA256SUMS
           printf '%s\n' "$GITHUB_SHA" > application-commit.txt
-          aws s3 cp database.dump.age "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/database.dump.age" --endpoint-url "$BACKUP_S3_ENDPOINT"
+          aws s3 cp database.dump "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/database.dump" --endpoint-url "$BACKUP_S3_ENDPOINT"
           aws s3 cp manifest.json "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/manifest.json" --endpoint-url "$BACKUP_S3_ENDPOINT"
           aws s3 cp SHA256SUMS "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/SHA256SUMS" --endpoint-url "$BACKUP_S3_ENDPOINT"
           aws s3 cp application-commit.txt "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/application-commit.txt" --endpoint-url "$BACKUP_S3_ENDPOINT"
@@ -80,7 +77,7 @@ jobs:
         run: |
           node scripts/backup/verify-backup.mjs manifest.json
           mkdir verification
-          aws s3 cp "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/database.dump.age" verification/database.dump.age --endpoint-url "$BACKUP_S3_ENDPOINT"
+          aws s3 cp "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/database.dump" verification/database.dump --endpoint-url "$BACKUP_S3_ENDPOINT"
           aws s3 cp "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/manifest.json" verification/manifest.json --endpoint-url "$BACKUP_S3_ENDPOINT"
           aws s3 cp "s3://${BACKUP_S3_BUCKET}/${SNAPSHOT_PREFIX}/SHA256SUMS" verification/SHA256SUMS --endpoint-url "$BACKUP_S3_ENDPOINT"
           (cd verification && sha256sum --check SHA256SUMS)

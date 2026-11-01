@@ -6,6 +6,7 @@ import { Readable, Transform } from 'node:stream';
 import { createObjectStoreFromEnvironment } from './r2-clients.mjs';
 
 export const DURABLE_PREFIXES = ['media/', 'h5p/libraries/', 'h5p/content/'];
+const SNAPSHOT_CONCURRENCY = 16;
 
 function checksumStream(stream) {
   const digest = crypto.createHash('sha256');
@@ -16,17 +17,6 @@ function checksumStream(stream) {
     },
   });
   return { digest, stream: stream.pipe(transform) };
-}
-
-async function hashStream(stream) {
-  const digest = crypto.createHash('sha256');
-  let size = 0;
-  for await (const chunk of stream) {
-    const buffer = Buffer.from(chunk);
-    digest.update(buffer);
-    size += buffer.length;
-  }
-  return { sha256: digest.digest('hex'), size };
 }
 
 function snapshotKey(snapshotPrefix, key) {
@@ -41,17 +31,35 @@ async function copyObject({ destination, source, snapshotPrefix, key }) {
     contentLength: sourceObject.size,
     contentType: sourceObject.contentType,
   });
+  // The workflow independently reads every copied object and verifies its
+  // size and SHA-256 in verify-backup.mjs before writing complete.json.
   const sha256 = digest.digest('hex');
-  const destinationHead = await destination.head(destinationKey);
-  if (destinationHead.size !== sourceObject.size) {
-    throw new Error(`Size verification failed for ${key}`);
-  }
-  const destinationObject = await destination.get(destinationKey);
-  const verified = await hashStream(destinationObject.stream);
-  if (verified.size !== sourceObject.size || verified.sha256 !== sha256) {
-    throw new Error(`Checksum verification failed for ${key}`);
-  }
   return { key, sha256, size: sourceObject.size };
+}
+
+async function mapWithConcurrency(items, concurrency, map) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  let failure;
+
+  async function worker() {
+    while (!failure) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+
+      try {
+        results[index] = await map(items[index]);
+      } catch (error) {
+        failure = error;
+      }
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  if (failure) throw failure;
+  return results;
 }
 
 export async function snapshotObjects({
@@ -64,12 +72,14 @@ export async function snapshotObjects({
   const objects = [];
   for (const prefix of prefixes) {
     const listed = await source.list(prefix);
-    for (const object of listed.sort((left, right) => left.key.localeCompare(right.key))) {
+    const sorted = listed.sort((left, right) => left.key.localeCompare(right.key));
+    const prefixObjects = await mapWithConcurrency(sorted, SNAPSHOT_CONCURRENCY, async (object) => {
       if (!object.key.startsWith(prefix)) {
         throw new Error(`Live object escaped requested prefix: ${object.key}`);
       }
-      objects.push(await copyObject({ destination, key: object.key, snapshotPrefix, source }));
-    }
+      return copyObject({ destination, key: object.key, snapshotPrefix, source });
+    });
+    objects.push(...prefixObjects);
   }
   objects.sort((left, right) => left.key.localeCompare(right.key));
   const manifest = {

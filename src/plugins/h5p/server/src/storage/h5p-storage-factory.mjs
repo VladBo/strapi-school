@@ -1,4 +1,5 @@
 import { S3Client } from '@aws-sdk/client-s3';
+import { NodeHttpHandler, streamCollector } from '@smithy/node-http-handler';
 import { createRequire } from 'node:module';
 
 import { createS3ObjectStore } from './object-store.mjs';
@@ -58,6 +59,11 @@ export function createH5PStorages({
         accessKeyId: s3.accessKeyId,
         secretAccessKey: s3.secretAccessKey,
       },
+      requestHandler: new NodeHttpHandler(),
+      streamCollector,
+      // The plugin bundler resolves the AWS SDK's browser runtime by default.
+      // H5P storage needs native Node streams so R2 reads work on Render.
+      sdkStreamMixin: (stream) => stream,
     });
   const common = { client, bucket: s3.bucket };
   const objectStore = createS3ObjectStore({ ...common, prefix: 'h5p' });

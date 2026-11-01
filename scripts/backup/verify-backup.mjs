@@ -3,6 +3,8 @@ import fs from 'node:fs/promises';
 
 import { createObjectStoreFromEnvironment } from './r2-clients.mjs';
 
+const VERIFY_CONCURRENCY = 16;
+
 async function checksum(stream) {
   const hash = crypto.createHash('sha256');
   let size = 0;
@@ -14,15 +16,38 @@ async function checksum(stream) {
   return { sha256: hash.digest('hex'), size };
 }
 
+async function mapWithConcurrency(items, concurrency, map) {
+  let nextIndex = 0;
+  let failure;
+
+  async function worker() {
+    while (!failure) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+
+      try {
+        await map(items[index]);
+      } catch (error) {
+        failure = error;
+      }
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  if (failure) throw failure;
+}
+
 export async function verifySnapshot({ manifest, store, requireCompletion = true }) {
   if (requireCompletion) await store.head(`${manifest.snapshotPrefix}/complete.json`);
-  for (const object of manifest.objects) {
+  await mapWithConcurrency(manifest.objects, VERIFY_CONCURRENCY, async (object) => {
     const snapshotObject = await store.get(`${manifest.snapshotPrefix}/${object.key}`);
     const actual = await checksum(snapshotObject.stream);
     if (actual.size !== object.size || actual.sha256 !== object.sha256) {
       throw new Error(`Snapshot verification failed for ${object.key}`);
     }
-  }
+  });
   return { objects: manifest.objects.length, verified: true };
 }
 
