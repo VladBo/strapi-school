@@ -75,28 +75,39 @@ async function backfillH5PSlugs(strapi: Core.Strapi): Promise<void> {
     }),
     documents.findMany({
       status: "published",
-      fields: ["title"],
+      fields: ["title", "legacyPath", "legacyNid", "slug"],
       pagination: { pageSize: 1000 },
     }),
   ]);
-  const publishedDocuments = new Set(
+  const draftsByDocumentId = new Map(
+    drafts.map((draft) => [draft.documentId, draft]),
+  );
+  const publishedDocumentIds = new Set(
     published.map(({ documentId }) => documentId),
   );
-  const usedSlugs = new Set(
-    drafts
-      .map(({ slug }) => slug)
-      .filter((slug): slug is string => Boolean(slug)),
-  );
+  const usedSlugs = new Map<string, Set<string>>();
+  for (const row of [...drafts, ...published]) {
+    if (!row.slug) continue;
+    const owners = usedSlugs.get(row.slug) ?? new Set<string>();
+    owners.add(row.documentId);
+    usedSlugs.set(row.slug, owners);
+  }
 
-  for (const row of drafts) {
-    if (row.slug) continue;
+  function slugIsUsedByAnotherDocument(slug: string, documentId: string) {
+    return [...(usedSlugs.get(slug) ?? [])].some(
+      (owner) => owner !== documentId,
+    );
+  }
+
+  async function backfill(row: (typeof drafts)[number], publish: boolean) {
+    if (row.slug) return;
     const base = preferredSlug(row);
     let candidate = base;
-    if (usedSlugs.has(candidate)) {
+    if (slugIsUsedByAnotherDocument(candidate, row.documentId)) {
       const suffix = row.legacyNid ? `-${row.legacyNid}` : "";
       candidate = `${base}${suffix}`;
       let index = 2;
-      while (usedSlugs.has(candidate)) {
+      while (slugIsUsedByAnotherDocument(candidate, row.documentId)) {
         candidate = `${base}${suffix || ""}-${index++}`;
       }
     }
@@ -105,13 +116,25 @@ async function backfillH5PSlugs(strapi: Core.Strapi): Promise<void> {
       documentId: row.documentId,
       data: { slug: candidate },
     });
-    if (publishedDocuments.has(row.documentId)) {
+    if (publish) {
       await documents.publish({ documentId: row.documentId });
     }
-    usedSlugs.add(candidate);
+    const owners = usedSlugs.get(candidate) ?? new Set<string>();
+    owners.add(row.documentId);
+    usedSlugs.set(candidate, owners);
     strapi.log.info(
       `Backfilled H5P slug for document ${row.documentId}: ${candidate}`,
     );
+  }
+
+  for (const row of drafts) {
+    if (row.slug) continue;
+    await backfill(row, publishedDocumentIds.has(row.documentId));
+  }
+
+  for (const row of published) {
+    if (row.slug || draftsByDocumentId.has(row.documentId)) continue;
+    await backfill(row, true);
   }
 }
 
