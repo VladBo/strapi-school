@@ -10,5 +10,4 @@ dist
 **/*.spec.js
 migration-artifacts
 public/h5p/content
-public/h5p/libraries
 public/h5p/temp-files
