@@ -127,13 +127,68 @@ async function backfillH5PSlugs(strapi: Core.Strapi): Promise<void> {
     );
   }
 
+  async function syncPublishedSlug(
+    row: (typeof published)[number],
+    slug: string,
+  ) {
+    if (slugIsUsedByAnotherDocument(slug, row.documentId)) {
+      strapi.log.error(
+        `Cannot backfill published H5P slug for document ${row.documentId}: ${slug} is already used by another document`,
+      );
+      return;
+    }
+
+    // Document Service updates always target the draft. Updating then publishing
+    // would also publish every other draft edit, so patch only the published
+    // database row and leave the draft lifecycle untouched.
+    const result = await strapi.db.query(H5P_UID).updateMany({
+      where: {
+        documentId: row.documentId,
+        publishedAt: { $notNull: true },
+        slug: null,
+      },
+      data: { slug },
+    });
+
+    if (result.count > 1) {
+      throw new Error(
+        `Expected to update one published H5P row for ${row.documentId}, updated ${result.count}`,
+      );
+    }
+
+    if (result.count === 0) {
+      const currentPublished = await documents.findOne({
+        documentId: row.documentId,
+        status: "published",
+        fields: ["slug"],
+      });
+      if (currentPublished?.slug !== slug) {
+        throw new Error(
+          `Published H5P slug was not updated for document ${row.documentId}`,
+        );
+      }
+    }
+
+    const owners = usedSlugs.get(slug) ?? new Set<string>();
+    owners.add(row.documentId);
+    usedSlugs.set(slug, owners);
+    strapi.log.info(
+      `Backfilled published H5P slug for document ${row.documentId}: ${slug}`,
+    );
+  }
+
   for (const row of drafts) {
     if (row.slug) continue;
     await backfill(row, publishedDocumentIds.has(row.documentId));
   }
 
   for (const row of published) {
-    if (row.slug || draftsByDocumentId.has(row.documentId)) continue;
+    if (row.slug) continue;
+    const draft = draftsByDocumentId.get(row.documentId);
+    if (draft) {
+      if (draft.slug) await syncPublishedSlug(row, draft.slug);
+      continue;
+    }
     await backfill(row, true);
   }
 }

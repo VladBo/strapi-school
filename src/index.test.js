@@ -71,3 +71,63 @@ test("does not treat another version of the same document as a slug collision", 
     { documentId: "same-document", data: { slug: "title" } },
   ]);
 });
+
+test("fills only the published slug when a document already has a draft slug", async () => {
+  const { default: app } = await import("./index.ts");
+  const draft = {
+    documentId: "published-with-draft",
+    title: "Програмування мовою Python",
+    legacyPath: "content/programuvannya-movoyu-python",
+    legacyNid: 92,
+    slug: "programuvannya-movoyu-python",
+  };
+  const published = { ...draft, slug: null };
+  const databaseUpdates = [];
+  const documentUpdates = [];
+  const publishes = [];
+  const errors = [];
+  const strapi = {
+    documents: () => ({
+      findMany: async ({ status }) =>
+        status === "draft" ? [draft] : [published],
+      update: async (params) => documentUpdates.push(params),
+      publish: async (params) => publishes.push(params),
+      findOne: async () => ({ slug: "programuvannya-movoyu-python" }),
+    }),
+    db: {
+      query: (uid) => {
+        assert.equal(uid, "api::h5p-content.h5p-content");
+        return {
+          updateMany: async (params) => {
+            databaseUpdates.push(params);
+            return { count: 1 };
+          },
+        };
+      },
+    },
+    log: {
+      info() {},
+      error(error) {
+        errors.push(error);
+      },
+    },
+  };
+
+  await app.bootstrap({ strapi });
+  await new Promise(setImmediate);
+  await new Promise(setImmediate);
+
+  assert.deepEqual(errors, []);
+  assert.deepEqual(documentUpdates, []);
+  assert.deepEqual(publishes, []);
+  assert.deepEqual(databaseUpdates, [
+    {
+      where: {
+        documentId: "published-with-draft",
+        publishedAt: { $notNull: true },
+        slug: null,
+      },
+      data: { slug: "programuvannya-movoyu-python" },
+    },
+  ]);
+});
