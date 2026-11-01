@@ -1,5 +1,5 @@
 import path from 'path';
-import databaseOptions = require('../src/storage/database-options.cjs');
+import { buildPostgresConnection } from './database-options';
 
 export default ({ env }) => {
   const client = env('DATABASE_CLIENT', 'sqlite');
@@ -23,7 +23,7 @@ export default ({ env }) => {
       },
       pool: { min: env.int('DATABASE_POOL_MIN', 2), max: env.int('DATABASE_POOL_MAX', 10) },
     },
-    postgres: databaseOptions.buildPostgresConnection(env),
+    postgres: buildPostgresConnection(env),
     sqlite: {
       connection: {
         filename: path.join(__dirname, '..', '..', env('DATABASE_FILENAME', '.tmp/data.db')),

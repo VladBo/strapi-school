@@ -326,6 +326,7 @@ async function main() {
       try {
         await upsertDocument('api::h5p-content.h5p-content', node, {
           title: node.title,
+          slug: await uniqueSlug('api::h5p-content.h5p-content', node),
           legacyNid: node.nid,
           legacyPath: node.alias || node.sourcePath,
           sourceLocale: 'uk',

@@ -1,4 +1,4 @@
-import storageConfig = require("../src/storage/storage-config.cjs");
+import * as storageConfig from "./storage-options";
 
 export default ({ env }) => {
   const assetSources = storageConfig.buildAssetSecuritySources(env);
@@ -51,7 +51,10 @@ export default ({ env }) => {
     "strapi::query",
     "strapi::body",
     "strapi::session",
-    "strapi::favicon",
+    {
+      name: "strapi::favicon",
+      config: { mime: "image/png" },
+    },
     "strapi::public",
     ...(assetUrlRewriteConfig
       ? [

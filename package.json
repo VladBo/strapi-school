@@ -4,9 +4,8 @@
   "private": true,
   "description": "A Strapi application",
   "scripts": {
-    "build": "npm run build:h5p && npm run build:runtime && strapi build",
+    "build": "npm run build:h5p && strapi build",
     "build:h5p": "npm run build --prefix src/plugins/h5p",
-    "build:runtime": "rm -f dist/config/storage-config.cjs && mkdir -p dist/src/storage && cp src/storage/storage-config.cjs src/storage/database-options.cjs dist/src/storage/",
     "console": "strapi console",
     "deploy": "strapi deploy",
     "dev": "npm run build:h5p && strapi develop",
