@@ -132,6 +132,12 @@ export default {
    * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
-    await backfillH5PSlugs(strapi);
+    setImmediate(() => {
+      void backfillH5PSlugs(strapi).catch((error: unknown) => {
+        strapi.log.error(
+          `H5P slug backfill failed: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,
+        );
+      });
+    });
   },
 };
