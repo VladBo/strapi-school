@@ -51,7 +51,7 @@ const r2UploadUrlRewriter: MiddlewareFactory<AssetUrlConfig> =
       ctx.method !== "GET" ||
       ctx.status < 200 ||
       ctx.status >= 300 ||
-      !ctx.is("application/json") ||
+      !ctx.response.is("application/json") ||
       !ctx.body ||
       typeof ctx.body !== "object"
     ) {
