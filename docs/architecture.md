@@ -12,7 +12,7 @@ Cloudflare R2 separates live assets from backups:
 - The private `school-backups` bucket stores weekly PostgreSQL dumps and snapshots of those three object prefixes.
 - H5P editor temporary files remain local and disposable. Do not migrate or back them up.
 
-Media URLs use the stable asset domain configured by `ASSET_BASE_URL`; do not save S3 API endpoint URLs in content. Local development defaults to SQLite and `STORAGE_DRIVER=local`; S3-compatible storage is enabled with `STORAGE_DRIVER=s3` and R2 credentials.
+Media URLs use the stable asset domain configured by `ASSET_BASE_URL`; do not save S3 API endpoint URLs in content. A response middleware also maps legacy `/uploads/...` URLs in Strapi media metadata to the corresponding `media/...` object URL, so old upload records and their generated previews work with R2. Local development defaults to SQLite and `STORAGE_DRIVER=local`; S3-compatible storage is enabled with `STORAGE_DRIVER=s3` and R2 credentials.
 
 ## H5P behavior
 

@@ -2,6 +2,13 @@ import storageConfig = require("../src/storage/storage-config.cjs");
 
 export default ({ env }) => {
   const assetSources = storageConfig.buildAssetSecuritySources(env);
+  const upload = storageConfig.buildUploadConfig(env);
+  const assetUrlRewriteConfig = upload
+    ? {
+        publicBaseUrl: upload.config.providerOptions.baseUrl,
+        rootPath: upload.config.providerOptions.rootPath,
+      }
+    : undefined;
 
   return [
     "strapi::logger",
@@ -46,6 +53,14 @@ export default ({ env }) => {
     "strapi::session",
     "strapi::favicon",
     "strapi::public",
+    ...(assetUrlRewriteConfig
+      ? [
+          {
+            resolve: "./src/middlewares/r2-upload-url-rewriter",
+            config: assetUrlRewriteConfig,
+          },
+        ]
+      : []),
     "plugin::h5p.h5p",
   ];
 };
