@@ -1,4 +1,5 @@
 import path from "node:path";
+import { Readable } from "node:stream";
 import fs from "fs-extra";
 import * as h5pServer from "@lumieducation/h5p-server";
 import type {
@@ -26,6 +27,7 @@ import { createH5PStorages } from "../storage/h5p-storage-factory.mjs";
 import { createH5PFileResponse } from "./h5p-file-response.mjs";
 import { renderH5PPlayer } from "./h5p-player.mjs";
 import { createEditorUrlGenerator } from "./h5p-url-generator.mjs";
+import { isolateH5PCkeditorGlobal } from "./h5p-ckeditor-global.mjs";
 
 const service = ({ strapi }: { strapi: Core.Strapi }) => {
   const state: {
@@ -550,6 +552,14 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
           type,
           file,
         );
+        if (type === "ckeditor" && file === "ckeditor.js") {
+          const source = await fs.readFile(filePath, "utf-8");
+          return {
+            stream: Readable.from([isolateH5PCkeditorGlobal(source)]),
+            mimeType: getMimeType(filePath),
+          };
+        }
+
         return getFileStreamResponse(filePath);
       } catch (error) {
         strapi.log.error("Failed to get editor file:", error);

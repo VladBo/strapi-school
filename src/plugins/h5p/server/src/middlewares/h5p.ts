@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "fs-extra";
+import { isolateH5PCkeditorGlobal } from "../services/h5p-ckeditor-global.mjs";
 
 const MIME_TYPES: Record<string, string> = {
   ".css": "text/css",
@@ -130,6 +131,15 @@ ${originalContent}
 
 ${originalContent}
 `;
+            return;
+          }
+
+          // The H5P editor asset is served from public uploads by this
+          // middleware. Namespace its CKEditor 43 version guard so it does
+          // not collide with Strapi's CKEditor 45 in the admin document.
+          if (filePath === "ckeditor/ckeditor.js") {
+            const originalContent = await fs.readFile(fullPath, "utf-8");
+            ctx.body = isolateH5PCkeditorGlobal(originalContent);
             return;
           }
 
