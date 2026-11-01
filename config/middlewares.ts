@@ -53,7 +53,7 @@ export default ({ env }) => {
     "strapi::session",
     {
       name: "strapi::favicon",
-      config: { mime: "image/png" },
+      config: { path: "public/favicon.png" },
     },
     "strapi::public",
     ...(assetUrlRewriteConfig
