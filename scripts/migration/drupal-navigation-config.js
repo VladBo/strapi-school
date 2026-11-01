@@ -1,16 +1,14 @@
 'use strict';
 
 const headerLinks = [
-  { title: 'Головна', type: 'internal', url: '/' },
   {
     title: 'Навчання',
     type: 'wrapper',
-    description: 'Навчальні матеріали за класами та факультативи',
+    description: 'Матеріали для учнів за класами',
     sublinks: [
       {
         title: 'Всеобуч',
         url: '/pages/vseobuch',
-        description: 'Вступна сторінка освітнього простору',
       },
       { title: '6 клас', url: '/pages/71' },
       { title: '7 клас', url: '/pages/7-klas' },
@@ -26,19 +24,19 @@ const headerLinks = [
     ],
   },
   {
+    title: 'Вправи',
+    type: 'internal',
+    url: '/quizzes',
+  },
+  {
     title: 'Матеріали',
     type: 'wrapper',
-    description: 'Новини, вправи, методичні матеріали та розклади',
+    description: 'Новини та методичні матеріали',
     sublinks: [
       {
         title: 'Новини',
         url: '/articles',
         description: 'Події, конкурси й публікації',
-      },
-      {
-        title: 'Інтерактивні вправи',
-        url: '/quizzes',
-        description: 'Тести та завдання H5P',
       },
       {
         title: 'Методичні рекомендації',
@@ -48,6 +46,13 @@ const headerLinks = [
         title: 'Нетипові уроки інформатики',
         url: '/pages/netipovi-uroki-informatiki',
       },
+    ],
+  },
+  {
+    title: 'Розклад',
+    type: 'wrapper',
+    description: 'Архівні розклади школи',
+    sublinks: [
       { title: 'Розклад уроків', url: '/pages/rozklad-urokiv' },
       { title: 'Розклад дзвінків', url: '/pages/rozklad-dzvinkiv' },
       {

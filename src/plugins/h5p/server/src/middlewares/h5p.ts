@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "fs-extra";
+import { isolateH5PCkeditorGlobal } from "../services/h5p-ckeditor-global.mjs";
 
 const MIME_TYPES: Record<string, string> = {
   ".css": "text/css",
@@ -107,14 +108,25 @@ ${originalContent}
         return;
       }
 
-      const fullPath = path.join(
-        strapi.dirs.static.public,
-        "uploads/h5p/editor",
-        filePath,
-      );
-
       try {
-        if (await fs.pathExists(fullPath)) {
+        // Editor assets are versioned in Git and included in Docker images at
+        // public/h5p/libraries/editor. Keep the uploads path as a fallback for
+        // existing local installations that still use the legacy location.
+        const editorAssetRoots = [
+          path.join(strapi.dirs.static.public, "h5p/libraries/editor"),
+          path.join(strapi.dirs.static.public, "uploads/h5p/editor"),
+        ];
+        let fullPath: string | undefined;
+
+        for (const root of editorAssetRoots) {
+          const candidate = path.join(root, filePath);
+          if (await fs.pathExists(candidate)) {
+            fullPath = candidate;
+            break;
+          }
+        }
+
+        if (fullPath) {
           const ext = path.extname(fullPath);
           ctx.type = MIME_TYPES[ext] || "application/octet-stream";
 
@@ -130,6 +142,15 @@ ${originalContent}
 
 ${originalContent}
 `;
+            return;
+          }
+
+          // The H5P editor asset is served from public uploads by this
+          // middleware. Namespace its CKEditor 43 version guard so it does
+          // not collide with Strapi's CKEditor 45 in the admin document.
+          if (filePath === "ckeditor/ckeditor.js") {
+            const originalContent = await fs.readFile(fullPath, "utf-8");
+            ctx.body = isolateH5PCkeditorGlobal(originalContent);
             return;
           }
 

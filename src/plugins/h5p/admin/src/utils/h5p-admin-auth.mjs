@@ -1,13 +1,28 @@
 const requiresAdminAuth = Symbol("requiresH5PAdminAuth");
 
-export function readStoredAdminToken(storage) {
+export function readStoredAdminToken(storage, cookie = "") {
   const rawToken = storage?.getItem?.("jwtToken");
-  if (!rawToken) return undefined;
-  try {
-    const parsed = JSON.parse(rawToken);
-    return typeof parsed === "string" && parsed ? parsed : undefined;
-  } catch {
+  if (rawToken) {
+    try {
+      const parsed = JSON.parse(rawToken);
+      if (typeof parsed === "string" && parsed) return parsed;
+    } catch {
+      return rawToken;
+    }
     return rawToken;
+  }
+
+  const tokenCookie = String(cookie)
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("jwtToken="));
+  if (!tokenCookie) return undefined;
+
+  const value = tokenCookie.slice("jwtToken=".length);
+  try {
+    return decodeURIComponent(value) || undefined;
+  } catch {
+    return value || undefined;
   }
 }
 

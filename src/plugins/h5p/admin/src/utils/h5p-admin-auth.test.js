@@ -33,3 +33,13 @@ test('adds the current admin bearer token only to private H5P XHR requests', asy
 
   restore();
 });
+
+test('reads the Strapi admin token from its cookie when localStorage is empty', async () => {
+  const { readStoredAdminToken } = await import('./h5p-admin-auth.mjs');
+  const storage = { getItem: () => null };
+
+  assert.equal(
+    readStoredAdminToken(storage, 'other=value; jwtToken=header.payload.signature; path=/'),
+    'header.payload.signature',
+  );
+});

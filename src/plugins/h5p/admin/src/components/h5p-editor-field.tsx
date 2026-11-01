@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { useIntl } from "react-intl";
 import { H5PEditorUI } from "@lumieducation/h5p-react";
@@ -77,6 +78,13 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
   const editorRef = useRef<H5PEditorUI>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isSavingRef = useRef(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const iframeDocumentRef = useRef<Document | null>(null);
+  const iframeAuthCleanupRef = useRef<(() => void) | null>(null);
+  const iframeErrorObserverRef = useRef<MutationObserver | null>(null);
+  const iframeLoadCleanupRef = useRef<(() => void) | null>(null);
+  const iframeInteractionCleanupRef = useRef<(() => void) | null>(null);
+  const [editorLoadError, setEditorLoadError] = useState<string | null>(null);
 
   const field = useField(name);
   const { onChange, value } = field;
@@ -91,7 +99,7 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
     if (typeof window === "undefined") return undefined;
     return installH5PAdminXhrAuth({
       XMLHttpRequestClass: window.XMLHttpRequest,
-      getToken: () => readStoredAdminToken(window.localStorage),
+      getToken: () => readStoredAdminToken(window.localStorage, document.cookie),
       origin: window.location.origin,
     });
   }, []);
@@ -118,7 +126,15 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
     }> => {
       const content = initialContentRef.current || {};
 
-      const { data } = await get("/h5p/editor-model/new");
+      let data: unknown;
+      try {
+        ({ data } = await get("/h5p/editor-model/new"));
+      } catch (error) {
+        setEditorLoadError(
+          "Не вдалося завантажити дані редактора H5P. Перевірте з’єднання та оновіть сторінку.",
+        );
+        throw error;
+      }
       const editorModel = data as IEditorModel & {
         library?: string;
         metadata?: IContentMetadata;
@@ -204,6 +220,54 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
       return;
     }
 
+    if (iframeRef.current !== iframe) {
+      iframeErrorObserverRef.current?.disconnect();
+      iframeAuthCleanupRef.current?.();
+      iframeLoadCleanupRef.current?.();
+      iframeInteractionCleanupRef.current?.();
+      iframeDocumentRef.current = null;
+      iframeRef.current = iframe;
+
+      const iframeWindow = iframe.contentWindow as (Window & typeof globalThis) | null;
+      const iframeXhr = iframeWindow?.XMLHttpRequest;
+      if (iframeXhr && iframeXhr !== window.XMLHttpRequest) {
+        iframeAuthCleanupRef.current = installH5PAdminXhrAuth({
+          XMLHttpRequestClass: iframeXhr,
+          getToken: () => readStoredAdminToken(window.localStorage, document.cookie),
+          origin: window.location.origin,
+        });
+      }
+
+      const observeIframeError = () => {
+        try {
+          const iframeBody = iframe.contentDocument?.body;
+          if (!iframeBody) return;
+          iframeErrorObserverRef.current?.disconnect();
+          const reportLoadError = () => {
+            if (/unable to load libraries/i.test(iframeBody.textContent || "")) {
+              setEditorLoadError(
+                "Не вдалося завантажити бібліотеки H5P. Перевірте з’єднання та оновіть сторінку.",
+              );
+            }
+          };
+          iframeErrorObserverRef.current = new MutationObserver(reportLoadError);
+          iframeErrorObserverRef.current.observe(iframeBody, {
+            childList: true,
+            characterData: true,
+            subtree: true,
+          });
+          reportLoadError();
+        } catch {
+          // The iframe may be navigating; the load listener retries in its new document.
+        }
+      };
+
+      iframe.addEventListener("load", observeIframeError);
+      iframeLoadCleanupRef.current = () =>
+        iframe.removeEventListener("load", observeIframeError);
+      observeIframeError();
+    }
+
     try {
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!iframeDoc || !iframeDoc.body) {
@@ -213,22 +277,56 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
         return;
       }
 
-      iframeDoc.addEventListener("mousedown", handleH5PInteraction, true);
-      iframeDoc.addEventListener("input", handleH5PInteraction, true);
-      iframeDoc.addEventListener("change", handleH5PInteraction, true);
+      if (iframeDocumentRef.current !== iframeDoc) {
+        iframeInteractionCleanupRef.current?.();
+        iframeDoc.addEventListener("mousedown", handleH5PInteraction, true);
+        iframeDoc.addEventListener("input", handleH5PInteraction, true);
+        iframeDoc.addEventListener("change", handleH5PInteraction, true);
+        iframeDocumentRef.current = iframeDoc;
+        iframeInteractionCleanupRef.current = () => {
+          iframeDoc.removeEventListener("mousedown", handleH5PInteraction, true);
+          iframeDoc.removeEventListener("input", handleH5PInteraction, true);
+          iframeDoc.removeEventListener("change", handleH5PInteraction, true);
+        };
+      }
     } catch {
       // Cross-origin fallback
       iframe.addEventListener("mousedown", handleH5PInteraction);
-      window.addEventListener("blur", () => {
+      const handleWindowBlur = () => {
         if (document.activeElement === iframe) {
           handleH5PInteraction();
         }
-      });
+      };
+      window.addEventListener("blur", handleWindowBlur);
+      iframeInteractionCleanupRef.current = () => {
+        iframe.removeEventListener("mousedown", handleH5PInteraction);
+        window.removeEventListener("blur", handleWindowBlur);
+      };
     }
   }, [handleH5PInteraction]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return undefined;
+
+    const observer = new MutationObserver(() => attachIframeListeners());
+    observer.observe(container, { childList: true, subtree: true });
+    attachIframeListeners();
+
+    return () => {
+      observer.disconnect();
+      iframeErrorObserverRef.current?.disconnect();
+      iframeAuthCleanupRef.current?.();
+      iframeLoadCleanupRef.current?.();
+      iframeInteractionCleanupRef.current?.();
+      iframeRef.current = null;
+      iframeDocumentRef.current = null;
+    };
+  }, [attachIframeListeners]);
+
   const handleLoaded = useCallback(
     (_contentId: string, _ubername: string) => {
+      setEditorLoadError(null);
       attachIframeListeners();
     },
     [attachIframeListeners]
@@ -285,6 +383,19 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
             onSaveError={handleSaveError}
           />
         </Box>
+
+        {editorLoadError ? (
+          <div
+            role="alert"
+            style={{
+              color: "#b42318",
+              fontSize: "0.875rem",
+              lineHeight: 1.5,
+            }}
+          >
+            {editorLoadError}
+          </div>
+        ) : null}
 
         <Field.Hint />
         <Field.Error />
