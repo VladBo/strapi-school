@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim AS build
+FROM node:22-bookworm-slim AS build
 
 WORKDIR /app
 ENV NODE_OPTIONS=--max-old-space-size=3072
@@ -13,7 +13,7 @@ RUN npm install --package-lock=false --include=optional --legacy-peer-deps --pre
   && rm -rf src/plugins/h5p/node_modules \
   && npm install --package-lock=false --omit=dev --include=optional --legacy-peer-deps --prefix src/plugins/h5p
 
-FROM node:20-bookworm-slim AS runtime
+FROM node:22-bookworm-slim AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
@@ -27,6 +27,7 @@ COPY --from=build /app/dist/config ./config
 COPY --from=build /app/config/sync ./config/sync
 COPY --from=build /app/public ./public
 COPY --from=build /app/src ./src
+COPY --from=build /app/scripts/dedupe-h5p-react.mjs ./scripts/dedupe-h5p-react.mjs
 
 EXPOSE 1337
 CMD ["npm", "start"]
