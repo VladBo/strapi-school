@@ -126,13 +126,13 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
   const contentId = useMemo(() => {
     const content = initialContentRef.current;
     if (content?.library && content?.params) {
-      return "stored";
+      return content.contentId || "new";
     }
     return "new";
   }, []);
 
   const loadContentCallback = useCallback(
-    async (_contentId: string): Promise<IEditorModel & {
+    async (requestedContentId: string): Promise<IEditorModel & {
       library?: string;
       metadata?: IContentMetadata;
       params?: Record<string, unknown>;
@@ -141,7 +141,10 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
 
       let data: unknown;
       try {
-        ({ data } = await get("/h5p/editor-model/new"));
+        const editorModelPath = requestedContentId === "new"
+          ? "/h5p/editor-model/new"
+          : `/h5p/editor-model/${encodeURIComponent(requestedContentId)}`;
+        ({ data } = await get(editorModelPath));
       } catch (error) {
         setEditorLoadError(
           "Не вдалося завантажити дані редактора H5P. Перевірте з’єднання та оновіть сторінку.",
@@ -153,6 +156,10 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
         metadata?: IContentMetadata;
         params?: Record<string, unknown>;
       };
+
+      // H5P renders media with ordinary browser requests, which cannot include
+      // the admin JWT. Keep editor Ajax private and use the public read-only API.
+      editorModel.integration.url = "/api/h5p";
 
       if (content.library && content.params) {
         editorModel.library = content.library;
@@ -180,6 +187,8 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
       requestBody: { library: string; params: Record<string, unknown> }
     ): Promise<{ contentId: string; metadata: IContentMetadata }> => {
       const updatedContent: H5PContent = {
+        ...initialContentRef.current,
+        contentId: _contentId === "new" ? undefined : _contentId,
         library: requestBody.library,
         params: requestBody.params,
         metadata: (requestBody.params?.metadata as Record<string, unknown>) || {},
@@ -193,7 +202,7 @@ const H5PEditorField = (props: H5PEditorFieldProps) => {
       onChangeRef.current(name, newValue);
 
       return {
-        contentId: "stored",
+        contentId: updatedContent.contentId || "new",
         metadata: (requestBody.params?.metadata || {}) as IContentMetadata,
       };
     },
