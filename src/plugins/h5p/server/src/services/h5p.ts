@@ -28,6 +28,7 @@ import { createH5PFileResponse } from "./h5p-file-response.mjs";
 import { renderH5PPlayer } from "./h5p-player.mjs";
 import { createEditorUrlGenerator } from "./h5p-url-generator.mjs";
 import { isolateH5PCkeditorGlobal } from "./h5p-ckeditor-global.mjs";
+import { seedContentTypeCache } from "./h5p-content-type-cache.mjs";
 
 const service = ({ strapi }: { strapi: Core.Strapi }) => {
   const state: {
@@ -122,6 +123,7 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
       await fs.ensureDir(contentPath);
       await fs.ensureDir(temporaryPath);
       const cache = new h5pServer.fsImplementations.InMemoryStorage();
+      await seedContentTypeCache(cache);
       const storageDriver = String(
         process.env.STORAGE_DRIVER || pluginConfig.storageDriver || "local",
       ).toLowerCase();
@@ -151,6 +153,14 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
         undefined,
         editorUrlGenerator,
       );
+      // Refresh Hub metadata in the background. The editor serves installed
+      // local libraries immediately instead of waiting for H5P Hub on a cold
+      // start (Render can take over a minute to reach external services).
+      void state.h5pEditor.contentTypeCache
+        .updateIfNecessary()
+        .catch((error: unknown) => {
+          strapi.log.warn("H5P Hub content type cache refresh failed:", error);
+        });
       state.h5pPlayer = new h5pServer.H5PPlayer(
         libraryStorage,
         contentStorage,
