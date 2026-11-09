@@ -236,6 +236,30 @@ test('caches small editor metadata reads and invalidates them when a library fil
   assert.equal(fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length, readsAfterFirstFetch + 1);
 });
 
+test('loads library metadata without a HEAD request and coalesces concurrent reads', async () => {
+  const { fixture, storage, cache } = await createHarness();
+  const library = name();
+  await storage.addLibrary(metadata(), true);
+  cache.clear();
+  fixture.commands.length = 0;
+
+  const results = await Promise.all([
+    storage.getLibrary(library),
+    storage.getLibrary(library),
+    storage.getLibrary(library),
+  ]);
+
+  assert.ok(results.every((result) => result instanceof InstalledLibrary));
+  assert.equal(
+    fixture.commands.filter(({ name }) => name === 'HeadObjectCommand').length,
+    0,
+  );
+  assert.equal(
+    fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length,
+    2,
+  );
+});
+
 test('invalidates the installed add-on catalog when libraries are added, changed, or removed', async () => {
   const { storage } = await createHarness();
   const addonName = name('H5P.Addon');

@@ -53,6 +53,7 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
   };
   const fileContents = new Map();
   const languagesByLibrary = new Map();
+  const libraryLoads = new Map();
 
   function clearLibraryReadCache(library) {
     const prefix = `${ubername(library)}/`;
@@ -77,6 +78,7 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
 
   function invalidate(library) {
     cache.delete(ubername(library));
+    libraryLoads.delete(ubername(library));
     clearLibraryReadCache(library);
     libraryCatalog = {
       installedNames: undefined,
@@ -202,19 +204,35 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
     const key = ubername(library);
     const cached = cache.get(key);
     if (cached) return InstalledLibrary.fromMetadata(cloneJson(cached));
-    if (!(await isInstalled(library))) {
-      throw h5pError(
-        'storage-file-implementations:get-library-metadata-not-installed',
-        { libraryName: key },
-        404,
-      );
+    let load = libraryLoads.get(key);
+    if (!load) {
+      load = Promise.all([
+        readJsonFile(library, LIBRARY_METADATA_FILE),
+        readJsonFile(library, STORAGE_METADATA_FILE, { restricted: false }),
+      ]).then(([specification, storageMetadata]) => ({ ...specification, ...storageMetadata }));
+      libraryLoads.set(key, load);
     }
 
-    const specification = await readJsonFile(library, LIBRARY_METADATA_FILE);
-    const storageMetadata = await readJsonFile(library, STORAGE_METADATA_FILE, { restricted: false });
-    const combined = { ...specification, ...storageMetadata };
-    cache.set(key, cloneJson(combined));
-    return InstalledLibrary.fromMetadata(cloneJson(combined));
+    try {
+      const combined = await load;
+      if (libraryLoads.get(key) === load) cache.set(key, cloneJson(combined));
+      return InstalledLibrary.fromMetadata(cloneJson(combined));
+    } catch (error) {
+      if (
+        error?.code === 'OBJECT_NOT_FOUND' &&
+        (!error.key || error.key === fileKey(library, LIBRARY_METADATA_FILE))
+      ) {
+        throw h5pError(
+          'storage-file-implementations:get-library-metadata-not-installed',
+          { libraryName: key },
+          404,
+          error,
+        );
+      }
+      throw error;
+    } finally {
+      if (libraryLoads.get(key) === load) libraryLoads.delete(key);
+    }
   }
 
   async function updateAdditionalMetadata(library, additionalMetadata) {
