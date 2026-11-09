@@ -66,6 +66,25 @@ test('builds driver-neutral full and partial stream responses', async () => {
   assert.equal(await readStream(partial.stream), '2345');
 });
 
+test('serves JSON from the already-read content without a storage metadata request', async () => {
+  const { createH5PJsonFileResponse } = await loadResponseHelpers();
+  const content = { title: 'Перевірка', slides: [{ text: 'Вітаю' }] };
+  const full = await createH5PJsonFileResponse({ filename: 'content.json', content });
+
+  assert.equal(full.status, 200);
+  assert.equal(full.mimeType, 'application/json');
+  assert.equal(Number(full.contentLength), Buffer.byteLength(JSON.stringify(content)));
+  assert.deepEqual(JSON.parse(await readStream(full.stream)), content);
+
+  const partial = await createH5PJsonFileResponse({
+    filename: 'content.json',
+    content,
+    rangeHeader: 'bytes=0-5',
+  });
+  assert.equal(partial.status, 206);
+  assert.equal(await readStream(partial.stream), JSON.stringify(content).slice(0, 6));
+});
+
 test('applies partial and unsatisfiable range metadata to Koa responses', async () => {
   const { applyH5PFileResponse, applyRangeErrorResponse } = await loadResponseHelpers();
   const ctx = {
