@@ -24,7 +24,10 @@ import {
   resolveMaxTotalSize,
 } from "./h5p-import.mjs";
 import { createH5PStorages } from "../storage/h5p-storage-factory.mjs";
-import { createH5PFileResponse } from "./h5p-file-response.mjs";
+import {
+  createH5PFileResponse,
+  createH5PJsonFileResponse,
+} from "./h5p-file-response.mjs";
 import { renderH5PPlayer } from "./h5p-player.mjs";
 import { createEditorUrlGenerator } from "./h5p-url-generator.mjs";
 import { isolateH5PCkeditorGlobal } from "./h5p-ckeditor-global.mjs";
@@ -509,6 +512,23 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => {
           resolvedFile = "content.json";
         } else if (file.startsWith("content/")) {
           resolvedFile = file.replace(/^content\//, "");
+        }
+        // H5P JSON files are already loaded through GetObject by these storage
+        // methods. Serving that data directly avoids a separate HeadObject
+        // round-trip, which fails for JSON objects on the deployed R2 path.
+        if (resolvedFile === "content.json") {
+          return createH5PJsonFileResponse({
+            filename: resolvedFile,
+            content: await state.contentStorage.getParameters(contentId),
+            rangeHeader,
+          });
+        }
+        if (resolvedFile === "h5p.json") {
+          return createH5PJsonFileResponse({
+            filename: resolvedFile,
+            content: await state.contentStorage.getMetadata(contentId),
+            rangeHeader,
+          });
         }
         return createH5PFileResponse({
           filename: resolvedFile,

@@ -94,6 +94,23 @@ export async function createH5PFileResponse({
   };
 }
 
+export async function createH5PJsonFileResponse({ filename, content, rangeHeader }) {
+  const body = Buffer.from(JSON.stringify(content));
+  const range = parseByteRange(rangeHeader, body.length);
+  const selected = range ? body.subarray(range.start, range.end + 1) : body;
+
+  return {
+    filename,
+    stream: Readable.from([selected]),
+    mimeType: 'application/json',
+    totalSize: body.length,
+    contentLength: selected.length,
+    range,
+    contentRange: range ? `bytes ${range.start}-${range.end}/${body.length}` : undefined,
+    status: range ? 206 : 200,
+  };
+}
+
 export function applyH5PFileResponse(ctx, response) {
   ctx.status = response.status;
   ctx.type = response.mimeType;
