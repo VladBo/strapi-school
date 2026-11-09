@@ -186,6 +186,80 @@ test('lists addons and deletes exactly one library prefix', async () => {
   assert.ok([...fixture.objects.keys()].every((key) => !key.startsWith('h5p/libraries/H5P.Addon-1.0/')));
 });
 
+test('reuses the installed add-on catalog across sequential and concurrent reads', async () => {
+  const { fixture, storage } = await createHarness();
+  await storage.addLibrary(
+    metadata('H5P.Addon', { addTo: { contentTypes: [{ text: { regex: '.*' } }] } }),
+    false,
+  );
+  await storage.addLibrary(metadata('H5P.Regular'), false);
+
+  const first = await storage.listAddons();
+  const firstCatalogListCount = fixture.commands.filter(
+    ({ name }) => name === 'ListObjectsV2Command',
+  ).length;
+  const [second, third, fourth] = await Promise.all([
+    storage.listAddons(),
+    storage.listAddons(),
+    storage.listAddons(),
+  ]);
+
+  assert.deepEqual(first.map((library) => library.machineName), ['H5P.Addon']);
+  assert.deepEqual(second.map((library) => library.machineName), ['H5P.Addon']);
+  assert.deepEqual(third.map((library) => library.machineName), ['H5P.Addon']);
+  assert.deepEqual(fourth.map((library) => library.machineName), ['H5P.Addon']);
+  assert.equal(
+    fixture.commands.filter(({ name }) => name === 'ListObjectsV2Command').length,
+    firstCatalogListCount,
+  );
+});
+
+test('caches small editor metadata reads and invalidates them when a library file changes', async () => {
+  const { fixture, storage } = await createHarness();
+  const library = name();
+  await storage.addLibrary(metadata(), false);
+  await storage.addFile(library, 'semantics.json', Readable.from('[{"name":"title"}]'));
+  await storage.addFile(library, 'language/en.json', Readable.from('{"hello":"Hello"}'));
+
+  assert.equal(await storage.getFileAsString(library, 'semantics.json'), '[{"name":"title"}]');
+  const readsAfterFirstFetch = fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length;
+  assert.equal(await storage.getFileAsString(library, 'semantics.json'), '[{"name":"title"}]');
+  assert.equal(fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length, readsAfterFirstFetch);
+
+  assert.deepEqual(await storage.getLanguages(library), ['en']);
+  const listsAfterFirstLanguageFetch = fixture.commands.filter(({ name }) => name === 'ListObjectsV2Command').length;
+  assert.deepEqual(await storage.getLanguages(library), ['en']);
+  assert.equal(fixture.commands.filter(({ name }) => name === 'ListObjectsV2Command').length, listsAfterFirstLanguageFetch);
+
+  await storage.addFile(library, 'semantics.json', Readable.from('[{"name":"updated"}]'));
+  assert.equal(await storage.getFileAsString(library, 'semantics.json'), '[{"name":"updated"}]');
+  assert.equal(fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length, readsAfterFirstFetch + 1);
+});
+
+test('invalidates the installed add-on catalog when libraries are added, changed, or removed', async () => {
+  const { storage } = await createHarness();
+  const addonName = name('H5P.Addon');
+
+  assert.deepEqual(await storage.listAddons(), []);
+
+  const addon = metadata('H5P.Addon', {
+    addTo: { contentTypes: [{ text: { regex: '.*' } }] },
+  });
+  await storage.addLibrary(addon, false);
+  assert.deepEqual(
+    (await storage.listAddons()).map((library) => library.machineName),
+    ['H5P.Addon'],
+  );
+
+  await storage.updateLibrary(metadata('H5P.Addon'));
+  assert.deepEqual(await storage.listAddons(), []);
+
+  await storage.updateLibrary(addon);
+  assert.equal((await storage.listAddons()).length, 1);
+  await storage.deleteLibrary(addonName);
+  assert.deepEqual(await storage.listAddons(), []);
+});
+
 test('returns H5P-compatible errors for missing libraries, files, and unsafe paths', async () => {
   const { storage } = await createHarness();
   const library = name();
