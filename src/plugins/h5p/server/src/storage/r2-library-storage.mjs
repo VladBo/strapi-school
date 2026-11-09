@@ -45,6 +45,22 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
   if (!store) throw new TypeError('An object store is required');
 
   const ubername = (library) => LibraryName.toUberName(library);
+  let libraryCatalog = {
+    installedNames: undefined,
+    installedNamesPromise: undefined,
+    addons: undefined,
+    addonsPromise: undefined,
+  };
+  const fileContents = new Map();
+  const languagesByLibrary = new Map();
+
+  function clearLibraryReadCache(library) {
+    const prefix = `${ubername(library)}/`;
+    for (const key of fileContents.keys()) {
+      if (key.startsWith(prefix)) fileContents.delete(key);
+    }
+    languagesByLibrary.delete(ubername(library));
+  }
 
   function fileKey(library, filename) {
     try {
@@ -61,6 +77,13 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
 
   function invalidate(library) {
     cache.delete(ubername(library));
+    clearLibraryReadCache(library);
+    libraryCatalog = {
+      installedNames: undefined,
+      installedNamesPromise: undefined,
+      addons: undefined,
+      addonsPromise: undefined,
+    };
   }
 
   async function readJsonFile(library, filename, fallback) {
@@ -118,6 +141,7 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
       throw h5pError('storage-file-implementations:illegal-relative-filename', { filename }, 400);
     }
     await store.put(fileKey(library, filename), readStream);
+    clearLibraryReadCache(library);
     return true;
   }
 
@@ -156,7 +180,18 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
   }
 
   async function getFileAsString(library, filename) {
-    return streamToString(await getFileStream(library, filename));
+    const isEditorMetadata =
+      filename === 'semantics.json' ||
+      (filename.startsWith('language/') && filename.endsWith('.json'));
+    const key = `${ubername(library)}/${filename}`;
+    if (isEditorMetadata && fileContents.has(key)) return fileContents.get(key);
+
+    const contents = streamToString(await getFileStream(library, filename));
+    if (isEditorMetadata) {
+      fileContents.set(key, contents);
+      contents.catch(() => fileContents.delete(key));
+    }
+    return contents;
   }
 
   async function getFileAsJson(library, filename) {
@@ -247,6 +282,7 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
         .filter((filename) => filename !== LIBRARY_METADATA_FILE && filename !== STORAGE_METADATA_FILE)
         .map((filename) => store.delete(fileKey(library, filename))),
     );
+    clearLibraryReadCache(library);
   }
 
   async function deleteLibrary(library) {
@@ -261,30 +297,63 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
     invalidate(library);
   }
 
-  async function getInstalledLibraryNames(machineName) {
+  async function loadInstalledLibraryNames() {
     const installed = new Map();
     for (const { key } of await store.list('')) {
       const match = key.match(/^([\w.]+-\d+\.\d+)\/library\.json$/i);
       if (!match) continue;
       const library = LibraryName.fromUberName(match[1]);
-      if (!machineName || library.machineName === machineName) installed.set(match[1], library);
+      installed.set(match[1], library);
     }
     return [...installed.entries()]
       .sort(([left], [right]) => left.localeCompare(right, 'en', { numeric: true }))
       .map(([, library]) => library);
   }
 
+  async function getInstalledLibraryNames(machineName) {
+    const catalog = libraryCatalog;
+    if (catalog.installedNames === undefined) {
+      catalog.installedNamesPromise ??= loadInstalledLibraryNames();
+      const installedNames = await catalog.installedNamesPromise;
+      if (libraryCatalog === catalog) catalog.installedNames = installedNames;
+      return machineName
+        ? installedNames.filter((library) => library.machineName === machineName)
+        : installedNames;
+    }
+
+    return machineName
+      ? catalog.installedNames.filter((library) => library.machineName === machineName)
+      : catalog.installedNames;
+  }
+
   async function getLanguages(library) {
+    const libraryKey = ubername(library);
+    if (languagesByLibrary.has(libraryKey)) return languagesByLibrary.get(libraryKey);
     const prefix = `${ubername(library)}/language/`;
-    return (await store.list(prefix))
+    const languages = store.list(prefix).then((objects) => objects
       .map(({ key }) => key.slice(prefix.length).match(/^([^/]+)\.json$/)?.[1])
       .filter(Boolean)
-      .sort();
+      .sort());
+    languagesByLibrary.set(libraryKey, languages);
+    languages.catch(() => languagesByLibrary.delete(libraryKey));
+    return languages;
   }
 
   async function listAddons() {
-    const libraries = await Promise.all((await getInstalledLibraryNames()).map(getLibrary));
-    return libraries.filter((library) => library.addTo !== undefined);
+    const catalog = libraryCatalog;
+    if (catalog.addons === undefined) {
+      catalog.addonsPromise ??= (async () => {
+        const libraries = await Promise.all((await getInstalledLibraryNames()).map(getLibrary));
+        return libraries
+          .filter((library) => library.addTo !== undefined)
+          .map((library) => cloneJson(library));
+      })();
+      const addons = await catalog.addonsPromise;
+      if (libraryCatalog === catalog) catalog.addons = addons;
+      return addons.map((library) => InstalledLibrary.fromMetadata(cloneJson(library)));
+    }
+
+    return catalog.addons.map((library) => InstalledLibrary.fromMetadata(cloneJson(library)));
   }
 
   async function getAllDependentsCount() {
