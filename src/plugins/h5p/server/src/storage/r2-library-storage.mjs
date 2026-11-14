@@ -188,10 +188,15 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
     const key = `${ubername(library)}/${filename}`;
     if (isEditorMetadata && fileContents.has(key)) return fileContents.get(key);
 
-    const contents = streamToString(await getFileStream(library, filename));
+    const contents = getFileStream(library, filename).then(streamToString);
     if (isEditorMetadata) {
       fileContents.set(key, contents);
-      contents.catch(() => fileContents.delete(key));
+      // Missing translations are normal for H5P libraries. LibraryManager
+      // probes several language fallbacks, so retain 404s too; otherwise each
+      // editor-model request repeats the same R2 round-trips for absent files.
+      contents.catch((error) => {
+        if (error?.httpStatusCode !== 404) fileContents.delete(key);
+      });
     }
     return contents;
   }

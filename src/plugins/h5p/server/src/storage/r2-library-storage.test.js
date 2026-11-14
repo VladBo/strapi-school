@@ -236,6 +236,28 @@ test('caches small editor metadata reads and invalidates them when a library fil
   assert.equal(fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length, readsAfterFirstFetch + 1);
 });
 
+test('caches missing language metadata and invalidates the cached 404 when the file is added', async () => {
+  const { fixture, storage } = await createHarness();
+  const library = name();
+  await storage.addLibrary(metadata(), false);
+  fixture.commands.length = 0;
+
+  await assert.rejects(storage.getFileAsString(library, 'language/en.json'));
+  const readsAfterFirstMiss = fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length;
+  await assert.rejects(storage.getFileAsString(library, 'language/en.json'));
+  assert.equal(
+    fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length,
+    readsAfterFirstMiss,
+  );
+
+  await storage.addFile(library, 'language/en.json', Readable.from('{"hello":"Hello"}'));
+  assert.equal(await storage.getFileAsString(library, 'language/en.json'), '{"hello":"Hello"}');
+  assert.equal(
+    fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length,
+    readsAfterFirstMiss + 1,
+  );
+});
+
 test('loads library metadata without a HEAD request and coalesces concurrent reads', async () => {
   const { fixture, storage, cache } = await createHarness();
   const library = name();
