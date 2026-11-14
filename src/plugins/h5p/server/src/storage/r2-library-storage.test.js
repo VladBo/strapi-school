@@ -236,6 +236,52 @@ test('caches small editor metadata reads and invalidates them when a library fil
   assert.equal(fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length, readsAfterFirstFetch + 1);
 });
 
+test('caches missing language metadata and invalidates the cached 404 when the file is added', async () => {
+  const { fixture, storage } = await createHarness();
+  const library = name();
+  await storage.addLibrary(metadata(), false);
+  fixture.commands.length = 0;
+
+  await assert.rejects(storage.getFileAsString(library, 'language/en.json'));
+  const readsAfterFirstMiss = fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length;
+  await assert.rejects(storage.getFileAsString(library, 'language/en.json'));
+  assert.equal(
+    fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length,
+    readsAfterFirstMiss,
+  );
+
+  await storage.addFile(library, 'language/en.json', Readable.from('{"hello":"Hello"}'));
+  assert.equal(await storage.getFileAsString(library, 'language/en.json'), '{"hello":"Hello"}');
+  assert.equal(
+    fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length,
+    readsAfterFirstMiss + 1,
+  );
+});
+
+test('loads library metadata without a HEAD request and coalesces concurrent reads', async () => {
+  const { fixture, storage, cache } = await createHarness();
+  const library = name();
+  await storage.addLibrary(metadata(), true);
+  cache.clear();
+  fixture.commands.length = 0;
+
+  const results = await Promise.all([
+    storage.getLibrary(library),
+    storage.getLibrary(library),
+    storage.getLibrary(library),
+  ]);
+
+  assert.ok(results.every((result) => result instanceof InstalledLibrary));
+  assert.equal(
+    fixture.commands.filter(({ name }) => name === 'HeadObjectCommand').length,
+    0,
+  );
+  assert.equal(
+    fixture.commands.filter(({ name }) => name === 'GetObjectCommand').length,
+    2,
+  );
+});
+
 test('invalidates the installed add-on catalog when libraries are added, changed, or removed', async () => {
   const { storage } = await createHarness();
   const addonName = name('H5P.Addon');
