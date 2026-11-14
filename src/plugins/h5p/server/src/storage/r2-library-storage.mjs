@@ -52,6 +52,7 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
     addonsPromise: undefined,
   };
   const fileContents = new Map();
+  const fileExistence = new Map();
   const languagesByLibrary = new Map();
   const libraryLoads = new Map();
 
@@ -59,6 +60,9 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
     const prefix = `${ubername(library)}/`;
     for (const key of fileContents.keys()) {
       if (key.startsWith(prefix)) fileContents.delete(key);
+    }
+    for (const key of fileExistence.keys()) {
+      if (key.startsWith(prefix)) fileExistence.delete(key);
     }
     languagesByLibrary.delete(ubername(library));
   }
@@ -105,7 +109,7 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
   }
 
   async function isInstalled(library) {
-    return store.exists(fileKey(library, LIBRARY_METADATA_FILE));
+    return fileExists(library, LIBRARY_METADATA_FILE);
   }
 
   async function addLibrary(libraryMetadata, restricted = false) {
@@ -149,7 +153,19 @@ export function createR2LibraryStorage({ store, cache = new Map() }) {
 
   async function fileExists(library, filename) {
     if (isInternalFile(filename)) return false;
-    return store.exists(fileKey(library, filename));
+    const key = fileKey(library, filename);
+    if (fileExistence.has(key)) return fileExistence.get(key);
+
+    const exists = store.exists(key);
+    fileExistence.set(key, exists);
+    try {
+      const result = await exists;
+      if (fileExistence.get(key) === exists) fileExistence.set(key, result);
+      return result;
+    } catch (error) {
+      if (fileExistence.get(key) === exists) fileExistence.delete(key);
+      throw error;
+    }
   }
 
   async function getFileStream(library, filename) {

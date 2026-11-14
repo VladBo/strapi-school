@@ -258,6 +258,29 @@ test('caches missing language metadata and invalidates the cached 404 when the f
   );
 });
 
+test('caches positive and negative file existence checks and invalidates them after writes', async () => {
+  const { fixture, storage } = await createHarness();
+  const library = name();
+  await storage.addLibrary(metadata(), false);
+  fixture.commands.length = 0;
+
+  assert.equal(await storage.fileExists(library, 'upgrades.js'), false);
+  assert.equal(await storage.fileExists(library, 'upgrades.js'), false);
+  assert.equal(
+    fixture.commands.filter(({ name }) => name === 'HeadObjectCommand').length,
+    1,
+  );
+
+  await storage.addFile(library, 'upgrades.js', Readable.from('module.exports = {};'));
+  assert.equal(await storage.fileExists(library, 'upgrades.js'), true);
+  const readsAfterWrite = fixture.commands.filter(({ name }) => name === 'HeadObjectCommand').length;
+  assert.equal(await storage.fileExists(library, 'upgrades.js'), true);
+  assert.equal(
+    fixture.commands.filter(({ name }) => name === 'HeadObjectCommand').length,
+    readsAfterWrite,
+  );
+});
+
 test('loads library metadata without a HEAD request and coalesces concurrent reads', async () => {
   const { fixture, storage, cache } = await createHarness();
   const library = name();
